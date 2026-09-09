@@ -5,6 +5,17 @@ import jakarta.persistence.*;
 
 import java.util.UUID;
 
+/**
+ * Represents a physical location where products are stored, such as a central
+ * warehouse, regional hub, or store.
+ *
+ * <p>Each location is identified by a unique {@code code}, which is trimmed and
+ * upper-cased on creation. It also carries a human-readable {@code name}, a
+ * {@link LocationType}, and an optional {@code address}.</p>
+ *
+ * @see LocationType
+ * @see Inventory
+ */
 @Entity
 @Table(
         name = "locations",
@@ -19,7 +30,7 @@ public class Location
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String code;
 
     @Column(nullable = false, length = 100)
@@ -29,13 +40,22 @@ public class Location
     @Column(nullable = false, length = 30)
     private LocationType type;
 
-    @Column()
+    @Column(length = 500)
     private String address;
 
     protected Location()
     {
     }
 
+    /**
+     * Creates a new location.
+     *
+     * @param code    the unique location code, trimmed and upper-cased (must not be blank)
+     * @param name    the display name of the location (must not be blank)
+     * @param type    the type of the location (must not be null)
+     * @param address an optional address, or null/blank to leave it unset
+     * @throws IllegalArgumentException if {@code code}, {@code name}, or {@code type} is missing
+     */
     public Location(String code, String name, LocationType type, String address)
     {
         if (code == null || code.isBlank())
@@ -50,12 +70,19 @@ public class Location
         {
             throw new IllegalArgumentException("Location type is required");
         }
-        this.code = code;
+        this.code = code.trim().toUpperCase();
         this.name = name;
         this.type = type;
-        this.address = address;
+        this.address = (address == null || address.isBlank()) ? null : address.trim();
     }
 
+    /**
+     * Updates the display name and optionally the address of this location.
+     *
+     * @param name    the new display name (must not be blank)
+     * @param address the new address, or null/blank to clear the current address
+     * @throws IllegalArgumentException if {@code name} is blank
+     */
     public void updateDetails(String name, String address)
     {
         if (name == null || name.isBlank())
@@ -63,7 +90,7 @@ public class Location
             throw new IllegalArgumentException("Location name is required");
         }
         this.name = name;
-        this.address = address;
+        this.address = (address == null || address.isBlank()) ? null : address.trim();
     }
 
     public UUID getId()

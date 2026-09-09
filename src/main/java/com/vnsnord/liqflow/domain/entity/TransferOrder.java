@@ -6,6 +6,20 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.*;
 
+/**
+ * Represents an order to transfer products between two locations.
+ *
+ * <p>A transfer order progresses through the following lifecycle states:
+ * {@code DRAFT → SUBMITTED → IN_TRANSIT → COMPLETED}.
+ * It can be cancelled from any state except {@code COMPLETED}.</p>
+ *
+ * <p>Items ({@link TransferOrderItem}) can only be added or removed while the
+ * order is in {@code DRAFT} status. Submitting an order with no items is not
+ * allowed.</p>
+ *
+ * @see TransferOrderItem
+ * @see TransferOrderStatus
+ */
 @Entity
 @Table(
         name = "transfer_orders",
@@ -51,6 +65,15 @@ public class TransferOrder
     {
     }
 
+    /**
+     * Creates a new transfer order in {@code DRAFT} status.
+     *
+     * @param orderNumber   unique business identifier for this order (must not be blank)
+     * @param sourceLocation the location from which products will be transferred (must not be null)
+     * @param targetLocation the location to which products will be transferred (must not be null)
+     * @throws IllegalArgumentException if {@code orderNumber} is null or blank, or if both locations are the same
+     * @throws NullPointerException     if {@code sourceLocation} or {@code targetLocation} is null
+     */
     public TransferOrder(String orderNumber, Location sourceLocation, Location targetLocation)
     {
         if (orderNumber== null || orderNumber.isBlank())
@@ -81,6 +104,15 @@ public class TransferOrder
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * Adds a product to this order. If the product already exists on the order,
+     * the given quantity is added to the existing item instead of creating a new one.
+     *
+     * @param product  the product to add (must not be null)
+     * @param quantity the number of units to transfer (must be &gt; 0)
+     * @throws IllegalStateException    if the order is not in {@code DRAFT} status
+     * @throws IllegalArgumentException if {@code quantity} is &le; 0
+     */
     public void addItem(Product product, int quantity)
     {
         if (this.status != TransferOrderStatus.DRAFT)
@@ -100,6 +132,13 @@ public class TransferOrder
                 );
     }
 
+    /**
+     * Removes an item from this order.
+     *
+     * @param item the item to remove (must not be null)
+     * @throws IllegalStateException if the order is not in {@code DRAFT} status
+     * @throws NullPointerException  if {@code item} is null
+     */
     public void removeItem(TransferOrderItem item)
     {
         if (this.status != TransferOrderStatus.DRAFT)
@@ -110,6 +149,11 @@ public class TransferOrder
         this.items.remove(item);
     }
 
+    /**
+     * Submits this order for processing, transitioning it from {@code DRAFT} to {@code SUBMITTED}.
+     *
+     * @throws IllegalStateException if the order is not in {@code DRAFT} status or has no items
+     */
     public void submit()
     {
         if (this.status != TransferOrderStatus.DRAFT)
@@ -123,6 +167,11 @@ public class TransferOrder
         this.status = TransferOrderStatus.SUBMITTED;
     }
 
+    /**
+     * Marks this order as in transit, transitioning it from {@code SUBMITTED} to {@code IN_TRANSIT}.
+     *
+     * @throws IllegalStateException if the order is not in {@code SUBMITTED} status
+     */
     public void markInTransit()
     {
         if (this.status != TransferOrderStatus.SUBMITTED)
@@ -132,6 +181,11 @@ public class TransferOrder
         this.status = TransferOrderStatus.IN_TRANSIT;
     }
 
+    /**
+     * Completes this order, transitioning it from {@code IN_TRANSIT} to {@code COMPLETED}.
+     *
+     * @throws IllegalStateException if the order is not in {@code IN_TRANSIT} status
+     */
     public void complete()
     {
         if (this.status != TransferOrderStatus.IN_TRANSIT)
@@ -141,6 +195,12 @@ public class TransferOrder
         this.status = TransferOrderStatus.COMPLETED;
     }
 
+    /**
+     * Cancels this order. A completed order cannot be cancelled.
+     * If the order is already cancelled, this method is a no-op.
+     *
+     * @throws IllegalStateException if the order is in {@code COMPLETED} status
+     */
     public void cancel()
     {
         if (this.status == TransferOrderStatus.COMPLETED)

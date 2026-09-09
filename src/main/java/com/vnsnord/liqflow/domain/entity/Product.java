@@ -5,6 +5,15 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * Represents a sellable product in the catalog.
+ *
+ * <p>Each product is identified by a unique {@code sku} and carries a display
+ * {@code name}, an optional {@code description}, and a non-negative selling
+ * {@code price}.</p>
+ *
+ * @see Inventory
+ */
 @Entity
 @Table(
         name = "products",
@@ -19,7 +28,7 @@ public class Product
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String sku;
 
     @Column(nullable = false, length = 150)
@@ -35,6 +44,15 @@ public class Product
     {
     }
 
+    /**
+     * Creates a new product.
+     *
+     * @param sku         the unique stock keeping unit (must not be blank)
+     * @param name        the display name of the product (must not be blank)
+     * @param description an optional description, or null
+     * @param price       the selling price (must be non-negative)
+     * @throws IllegalArgumentException if {@code sku} or {@code name} is blank, or if {@code price} is negative
+     */
     public Product(String sku, String name, String description, BigDecimal price)
     {
         if (sku == null || sku.isBlank())
@@ -55,6 +73,14 @@ public class Product
         this.price = price;
     }
 
+    /**
+     * Updates the display name, description and price of this product.
+     *
+     * @param name        the new display name (must not be blank)
+     * @param description the new description, or null
+     * @param price       the new selling price (must be non-negative)
+     * @throws IllegalArgumentException if {@code name} is blank or {@code price} is negative
+     */
     public void updateDetails(String name, String description, BigDecimal price)
     {
         if (name == null || name.isBlank())

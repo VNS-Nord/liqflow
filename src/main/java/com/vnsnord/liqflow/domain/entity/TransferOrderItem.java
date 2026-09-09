@@ -5,6 +5,18 @@ import jakarta.persistence.*;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * A single line item within a {@link TransferOrder}, associating a {@link Product}
+ * with a quantity to be transferred.
+ *
+ * <p>Each transfer order may contain at most one item per product. If
+ * {@link TransferOrder#addItem(Product, int)} is called for a product that
+ * already exists on the order, the quantity is increased rather than creating
+ * a duplicate item.</p>
+ *
+ * @see TransferOrder
+ * @see Product
+ */
 @Entity
 @Table(
         name = "transfer_order_items",
@@ -33,6 +45,15 @@ public class TransferOrderItem
     protected TransferOrderItem() {
     }
 
+    /**
+     * Creates a new transfer order item.
+     *
+     * @param transferOrder the parent transfer order (must not be null)
+     * @param product       the product to transfer (must not be null)
+     * @param quantity      the number of units to transfer (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code quantity} is &le; 0
+     * @throws NullPointerException  if {@code transferOrder} or {@code product} is null
+     */
     public TransferOrderItem(TransferOrder transferOrder, Product product, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than zero");
@@ -42,6 +63,12 @@ public class TransferOrderItem
         this.quantity = quantity;
     }
 
+    /**
+     * Increases the quantity for this item.
+     *
+     * @param amount the amount to add (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     */
     void addQuantity(int amount) {
         if (amount <= 0)
         {

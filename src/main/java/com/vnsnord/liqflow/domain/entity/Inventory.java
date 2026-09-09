@@ -5,6 +5,22 @@ import jakarta.persistence.*;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Represents the stock of a {@link Product} held at a {@link Location}.
+ *
+ * <p>Each inventory record is unique for a given {@code location} and
+ * {@code product} combination. It tracks the physical quantity on hand, the
+ * quantity reserved for pending orders, and a minimum threshold used to signal
+ * when stock is running low.</p>
+ *
+ * <p>The available quantity is computed as the physical quantity minus the
+ * reserved quantity ({@link #getAvailableQuantity()}). Stock can be reserved,
+ * released, deducted, or added through the domain methods on this class, all of
+ * which enforce the required invariants.</p>
+ *
+ * @see Location
+ * @see Product
+ */
 @Entity
 @Table(
         name = "inventories",
@@ -43,6 +59,16 @@ public class Inventory
     {
     }
 
+    /**
+     * Creates a new inventory record for the given location, product and initial stock.
+     *
+     * @param location      the location where the stock is held (must not be null)
+     * @param product       the product being stocked (must not be null)
+     * @param initialStock  the initial physical quantity on hand (must be &ge; 0)
+     * @param minThreshold  the minimum quantity threshold (must be &ge; 0)
+     * @throws IllegalArgumentException if {@code initialStock} or {@code minThreshold} is negative
+     * @throws NullPointerException     if {@code location} or {@code product} is null
+     */
     public Inventory(Location location, Product product, int initialStock, int minThreshold)
     {
         if (initialStock < 0)
@@ -60,11 +86,24 @@ public class Inventory
         this.reservedQuantity = 0;
     }
 
+    /**
+     * Returns the quantity available for new reservations or fulfillment,
+     * computed as the physical quantity minus the reserved quantity.
+     *
+     * @return the currently available quantity
+     */
     public int getAvailableQuantity()
     {
         return this.quantity - this.reservedQuantity;
     }
 
+    /**
+     * Reserves a quantity of stock, increasing the reserved quantity.
+     *
+     * @param amount the number of units to reserve (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalStateException    if there is insufficient available stock
+     */
     public void reserveStock(int amount)
     {
         if (amount <= 0)
@@ -78,6 +117,13 @@ public class Inventory
         this.reservedQuantity += amount;
     }
 
+    /**
+     * Releases a previously reserved quantity of stock.
+     *
+     * @param amount the number of units to release (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalStateException    if more than the currently reserved quantity is released
+     */
     public void releaseReservedStock(int amount)
     {
         if (amount <= 0)
@@ -91,6 +137,14 @@ public class Inventory
         this.reservedQuantity -= amount;
     }
 
+    /**
+     * Deducts a quantity from the physical stock on hand. If the deducted amount
+     * is covered by reserved stock, the reserved quantity is reduced accordingly.
+     *
+     * @param amount the number of units to deduct (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalStateException    if there is insufficient physical stock
+     */
     public void deductStock(int amount)
     {
         if (amount <= 0)
@@ -108,6 +162,12 @@ public class Inventory
         }
     }
 
+    /**
+     * Adds a quantity to the physical stock on hand.
+     *
+     * @param amount the number of units to add (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     */
     public void addStock(int amount)
     {
         if (amount <= 0)
@@ -117,6 +177,11 @@ public class Inventory
         this.quantity += amount;
     }
 
+    /**
+     * Indicates whether the available quantity is at or below the minimum threshold.
+     *
+     * @return true if the available quantity equals or falls below the minimum threshold, false otherwise
+     */
     public boolean isBelowThreshold()
     {
         return getAvailableQuantity() <= this.minThreshold;
