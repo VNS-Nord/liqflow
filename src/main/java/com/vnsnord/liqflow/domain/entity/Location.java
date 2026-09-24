@@ -93,26 +93,41 @@ public class Location
         this.address = (address == null || address.isBlank()) ? null : address.trim();
     }
 
+    /**
+     * @return the location identifier
+     */
     public UUID getId()
     {
         return id;
     }
 
+    /**
+     * @return the unique, upper-cased location code
+     */
     public String getCode()
     {
         return code;
     }
 
+    /**
+     * @return the display name of the location
+     */
     public String getName()
     {
         return name;
     }
 
+    /**
+     * @return the type of the location
+     */
     public LocationType getType()
     {
         return type;
     }
 
+    /**
+     * @return the optional address, or null
+     */
     public String getAddress()
     {
         return address;

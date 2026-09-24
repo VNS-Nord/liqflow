@@ -138,8 +138,10 @@ public class Inventory
     }
 
     /**
-     * Deducts a quantity from the physical stock on hand. If the deducted amount
-     * is covered by reserved stock, the reserved quantity is reduced accordingly.
+     * Deducts a quantity from the physical stock on hand. The deduction is
+     * taken from the unreserved stock first; if it exceeds the unreserved
+     * quantity, the reserved quantity is reduced accordingly so that the
+     * available quantity never becomes negative.
      *
      * @param amount the number of units to deduct (must be &gt; 0)
      * @throws IllegalArgumentException if {@code amount} is &le; 0
@@ -155,11 +157,12 @@ public class Inventory
         {
             throw new IllegalStateException("Insufficient physical stock to deduct");
         }
-        this.quantity -= amount;
-        if (this.reservedQuantity >= amount)
+        int unreserved = getAvailableQuantity();
+        if (unreserved < amount)
         {
-            this.reservedQuantity -= amount;
+            this.reservedQuantity -= amount - unreserved;
         }
+        this.quantity -= amount;
     }
 
     /**
@@ -187,36 +190,57 @@ public class Inventory
         return getAvailableQuantity() <= this.minThreshold;
     }
 
+    /**
+     * @return the inventory identifier
+     */
     public UUID getId()
     {
         return id;
     }
 
+    /**
+     * @return the location where the stock is held
+     */
     public Location getLocation()
     {
         return location;
     }
 
+    /**
+     * @return the product being stocked
+     */
     public Product getProduct()
     {
         return product;
     }
 
+    /**
+     * @return the physical quantity on hand
+     */
     public Integer getQuantity()
     {
         return quantity;
     }
 
+    /**
+     * @return the quantity reserved for pending orders
+     */
     public Integer getReservedQuantity()
     {
         return reservedQuantity;
     }
 
+    /**
+     * @return the minimum quantity threshold
+     */
     public Integer getMinThreshold()
     {
         return minThreshold;
     }
 
+    /**
+     * @return the optimistic-locking version
+     */
     public Long getVersion()
     {
         return version;

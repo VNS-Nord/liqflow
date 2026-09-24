@@ -67,7 +67,7 @@ public class Product
         {
             throw new IllegalArgumentException("Price must be non-negative");
         }
-        this.sku = sku;
+        this.sku = sku.trim();
         this.name = name;
         this.description = description;
         this.price = price;
@@ -96,26 +96,41 @@ public class Product
         this.price = price;
     }
 
+    /**
+     * @return the product identifier
+     */
     public UUID getId()
     {
         return id;
     }
 
+    /**
+     * @return the unique stock keeping unit
+     */
     public String getSku()
     {
         return sku;
     }
 
+    /**
+     * @return the display name of the product
+     */
     public String getName()
     {
         return name;
     }
 
+    /**
+     * @return the optional description, or null
+     */
     public String getDescription()
     {
         return description;
     }
 
+    /**
+     * @return the selling price
+     */
     public BigDecimal getPrice()
     {
         return price;

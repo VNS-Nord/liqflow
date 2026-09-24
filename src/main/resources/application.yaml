@@ -2,6 +2,10 @@ spring:
   application:
     name: liqflow
 
+  # Development profile is the default when none is explicitly selected.
+  profiles:
+    default: dev
+
   datasource:
     url: jdbc:postgresql://localhost:5432/liqflow?reWriteBatchedInserts=true&prepareThreshold=5
     username: ${DB_USERNAME:postgres}
@@ -15,18 +19,15 @@ spring:
       connection-timeout: 15000
       max-lifetime: 1140000
       idle-timeout: 0
-      leak-detection-threshold: 3000
 
   jpa:
     open-in-view: false
-    show-sql: true
 
     hibernate:
       ddl-auto: validate
 
     properties:
       hibernate:
-        format_sql: true
         jdbc:
           batch_size: 30
         order_inserts: true

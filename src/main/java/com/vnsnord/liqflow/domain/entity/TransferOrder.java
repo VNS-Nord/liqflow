@@ -68,7 +68,7 @@ public class TransferOrder
     /**
      * Creates a new transfer order in {@code DRAFT} status.
      *
-     * @param orderNumber   unique business identifier for this order (must not be blank)
+     * @param orderNumber    unique business identifier for this order (must not be blank)
      * @param sourceLocation the location from which products will be transferred (must not be null)
      * @param targetLocation the location to which products will be transferred (must not be null)
      * @throws IllegalArgumentException if {@code orderNumber} is null or blank, or if both locations are the same
@@ -76,18 +76,36 @@ public class TransferOrder
      */
     public TransferOrder(String orderNumber, Location sourceLocation, Location targetLocation)
     {
-        if (orderNumber== null || orderNumber.isBlank())
+        if (orderNumber == null || orderNumber.isBlank())
         {
             throw new IllegalArgumentException("Order number cannot be null or empty");
         }
         this.sourceLocation = Objects.requireNonNull(sourceLocation, "Source location cannot be null");
         this.targetLocation = Objects.requireNonNull(targetLocation, "Target location cannot be null");
-        if (sourceLocation.equals(targetLocation) || sourceLocation.getId() != null && sourceLocation.getId().equals(targetLocation.getId()))
+        if (isSameLocation(sourceLocation, targetLocation))
         {
             throw new IllegalArgumentException("Source and target locations cannot be the same");
         }
-        this.orderNumber = orderNumber;
+        this.orderNumber = orderNumber.trim();
         this.status = TransferOrderStatus.DRAFT;
+    }
+
+    /**
+     * Determines whether two locations should be considered the same, either
+     * because they are identical instances or because they share a persistent
+     * identifier.
+     *
+     * @param first  the first location
+     * @param second the second location
+     * @return true if the locations are the same, false otherwise
+     */
+    private boolean isSameLocation(Location first, Location second)
+    {
+        if (first.equals(second))
+        {
+            return true;
+        }
+        return first.getId() != null && first.getId().equals(second.getId());
     }
 
     @PrePersist
@@ -108,6 +126,10 @@ public class TransferOrder
      * Adds a product to this order. If the product already exists on the order,
      * the given quantity is added to the existing item instead of creating a new one.
      *
+     * <p>A product is considered already present when it has the same
+     * identifier as the item's product, or (for unsaved products) when it is
+     * the same instance.</p>
+     *
      * @param product  the product to add (must not be null)
      * @param quantity the number of units to transfer (must be &gt; 0)
      * @throws IllegalStateException    if the order is not in {@code DRAFT} status
@@ -119,17 +141,36 @@ public class TransferOrder
         {
             throw new IllegalStateException("Items can only be added to a draft transfer order");
         }
+        Objects.requireNonNull(product, "Product cannot be null");
         if (quantity <= 0)
         {
             throw new IllegalArgumentException("Quantity must be greater than zero");
         }
         this.items.stream()
-                .filter(item -> item.getProduct().equals(product))
+                .filter(item -> isSameProduct(product, item.getProduct()))
                 .findFirst()
                 .ifPresentOrElse(
                         existingItem -> existingItem.addQuantity(quantity),
                         () -> this.items.add(new TransferOrderItem(this, product, quantity))
                 );
+    }
+
+    /**
+     * Determines whether the given products should be considered the same,
+     * either because they share a persistent identifier or because they are
+     * identical (unsaved) instances.
+     *
+     * @param first  the first product
+     * @param second the second product
+     * @return true if the products are the same, false otherwise
+     */
+    private boolean isSameProduct(Product first, Product second)
+    {
+        if (first.getId() != null && first.getId().equals(second.getId()))
+        {
+            return true;
+        }
+        return first.getId() == null && first.equals(second);
     }
 
     /**
@@ -214,46 +255,73 @@ public class TransferOrder
         this.status = TransferOrderStatus.CANCELLED;
     }
 
+    /**
+     * @return the order identifier
+     */
     public UUID getId()
     {
         return id;
     }
 
+    /**
+     * @return the unique business order number
+     */
     public String getOrderNumber()
     {
         return orderNumber;
     }
 
+    /**
+     * @return the source location of the transfer
+     */
     public Location getSourceLocation()
     {
         return sourceLocation;
     }
 
+    /**
+     * @return the target location of the transfer
+     */
     public Location getTargetLocation()
     {
         return targetLocation;
     }
 
+    /**
+     * @return the current lifecycle status
+     */
     public TransferOrderStatus getStatus()
     {
         return status;
     }
 
+    /**
+     * @return the creation timestamp
+     */
     public Instant getCreatedAt()
     {
         return createdAt;
     }
 
+    /**
+     * @return the timestamp of the last update
+     */
     public Instant getUpdatedAt()
     {
         return updatedAt;
     }
 
+    /**
+     * @return the line items of this order, as an unmodifiable list
+     */
     public List<TransferOrderItem> getItems()
     {
         return Collections.unmodifiableList(items);
     }
 
+    /**
+     * @return the optimistic-locking version
+     */
     public Long getVersion()
     {
         return version;

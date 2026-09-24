@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,23 +16,17 @@ import java.util.UUID;
  * Spring Data JPA repository for {@link TransferOrder} entities.
  *
  * <p>Extends {@link JpaRepository} to provide standard CRUD and pagination
- * operations, plus the order-number, status, and location-based queries
- * declared below. {@link #findWithDetailsById(UUID)} eagerly fetches the order
- * items and both locations to avoid lazy-loading issues outside a transaction.</p>
+ * operations, plus the order-number and location-based queries declared below.
+ * {@link #findWithDetailsById(UUID)} eagerly fetches the order items and both
+ * locations, and {@link #findAllWithLocations(Pageable)} eagerly fetches both
+ * locations for list views, to avoid lazy-loading issues outside a
+ * transaction.</p>
  *
  * @see TransferOrder
  * @see TransferOrderStatus
  */
 public interface TransferOrderRepository extends JpaRepository<TransferOrder, UUID>
 {
-    /**
-     * Finds a transfer order by its unique order number.
-     *
-     * @param orderNumber the order number to search for
-     * @return the matching order, or an empty {@link Optional} if none exists
-     */
-    Optional<TransferOrder> findByOrderNumber(String orderNumber);
-
     /**
      * Checks whether a transfer order with the given order number exists.
      *
@@ -43,24 +36,15 @@ public interface TransferOrderRepository extends JpaRepository<TransferOrder, UU
     boolean existsByOrderNumber(String orderNumber);
 
     /**
-     * Returns a page of transfer orders filtered by status.
+     * Returns a page of all transfer orders, eagerly fetching both the source
+     * and target locations to avoid a query per row.
      *
-     * @param status   the status to filter on
      * @param pageable pagination and sorting information
-     * @return a page of orders with the given status
+     * @return a page of orders with their locations loaded
      */
-    Page<TransferOrder> findByStatus(TransferOrderStatus status, Pageable pageable);
-
-    /**
-     * Returns a page of transfer orders in which the given location is either
-     * the source or the target.
-     *
-     * @param sourceId the source location identifier
-     * @param targetId the target location identifier
-     * @param pageable pagination and sorting information
-     * @return a page of orders involving the location
-     */
-    Page<TransferOrder> findBySourceLocationIdOrTargetLocationId(UUID sourceId, UUID targetId, Pageable pageable);
+    @EntityGraph(attributePaths = {"sourceLocation", "targetLocation"})
+    @Query("SELECT t FROM TransferOrder t")
+    Page<TransferOrder> findAllWithLocations(Pageable pageable);
 
     /**
      * Finds a transfer order by id, eagerly loading its items, source location,
@@ -74,15 +58,21 @@ public interface TransferOrderRepository extends JpaRepository<TransferOrder, UU
     Optional<TransferOrder> findWithDetailsById(@Param("id") UUID id);
 
     /**
-     * Checks whether any transfer order involves the given location and is in
-     * one of the given statuses.
+     * Checks whether any transfer order involves the given location as its
+     * source or target.
      *
      * @param locationId the location identifier
-     * @param statuses   the statuses to check for
      * @return true if at least one matching order exists, false otherwise
      */
-    @Query("SELECT COUNT(t) > 0 FROM TransferOrder t WHERE (t.sourceLocation.id = :locationId OR t.targetLocation.id = :locationId) AND t.status IN :statuses")
-    boolean existsByLocationIdAndStatusIn(@Param("locationId") UUID locationId, @Param("statuses") Collection<TransferOrderStatus> statuses);
+    @Query("SELECT COUNT(t) > 0 FROM TransferOrder t WHERE t.sourceLocation.id = :locationId OR t.targetLocation.id = :locationId")
+    boolean existsByLocationId(@Param("locationId") UUID locationId);
 
-
+    /**
+     * Checks whether any transfer order item references the given product.
+     *
+     * @param productId the product identifier
+     * @return true if at least one matching item exists, false otherwise
+     */
+    @Query("SELECT COUNT(i) > 0 FROM TransferOrderItem i WHERE i.product.id = :productId")
+    boolean existsItemForProduct(@Param("productId") UUID productId);
 }

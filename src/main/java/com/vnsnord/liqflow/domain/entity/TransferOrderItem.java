@@ -77,18 +77,30 @@ public class TransferOrderItem
         this.quantity += amount;
     }
 
+    /**
+     * @return the item identifier
+     */
     public UUID getId() {
         return id;
     }
 
+    /**
+     * @return the parent transfer order
+     */
     public TransferOrder getTransferOrder() {
         return transferOrder;
     }
 
+    /**
+     * @return the product being transferred
+     */
     public Product getProduct() {
         return product;
     }
 
+    /**
+     * @return the number of units to transfer
+     */
     public Integer getQuantity() {
         return quantity;
     }
