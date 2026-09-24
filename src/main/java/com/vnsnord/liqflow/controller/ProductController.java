@@ -1,8 +1,8 @@
 package com.vnsnord.liqflow.controller;
 
-import com.vnsnord.liqflow.dto.CreateProductRequest;
-import com.vnsnord.liqflow.dto.ProductResponse;
-import com.vnsnord.liqflow.dto.UpdateProductRequest;
+import com.vnsnord.liqflow.dto.request.CreateProductRequest;
+import com.vnsnord.liqflow.dto.response.ProductResponse;
+import com.vnsnord.liqflow.dto.request.UpdateProductRequest;
 import com.vnsnord.liqflow.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;

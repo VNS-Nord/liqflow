@@ -1,10 +1,10 @@
 package com.vnsnord.liqflow.controller;
 
 import com.vnsnord.liqflow.domain.enums.TransferOrderStatus;
-import com.vnsnord.liqflow.dto.TransferOrderDetailResponse;
-import com.vnsnord.liqflow.dto.TransferOrderItemRequest;
-import com.vnsnord.liqflow.dto.TransferOrderItemResponse;
-import com.vnsnord.liqflow.dto.TransferOrderResponse;
+import com.vnsnord.liqflow.dto.response.TransferOrderDetailResponse;
+import com.vnsnord.liqflow.dto.request.TransferOrderItemRequest;
+import com.vnsnord.liqflow.dto.response.TransferOrderItemResponse;
+import com.vnsnord.liqflow.dto.response.TransferOrderResponse;
 import com.vnsnord.liqflow.exception.TransferOrderNotFoundException;
 import com.vnsnord.liqflow.service.TransferOrderService;
 import org.junit.jupiter.api.Test;

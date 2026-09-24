@@ -1,9 +1,9 @@
 package com.vnsnord.liqflow.controller;
 
-import com.vnsnord.liqflow.dto.CreateTransferOrderRequest;
-import com.vnsnord.liqflow.dto.TransferOrderDetailResponse;
-import com.vnsnord.liqflow.dto.TransferOrderItemRequest;
-import com.vnsnord.liqflow.dto.TransferOrderResponse;
+import com.vnsnord.liqflow.dto.request.CreateTransferOrderRequest;
+import com.vnsnord.liqflow.dto.response.TransferOrderDetailResponse;
+import com.vnsnord.liqflow.dto.request.TransferOrderItemRequest;
+import com.vnsnord.liqflow.dto.response.TransferOrderResponse;
 import com.vnsnord.liqflow.service.TransferOrderService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;

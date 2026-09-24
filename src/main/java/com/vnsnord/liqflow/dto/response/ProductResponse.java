@@ -1,6 +1,4 @@
-package com.vnsnord.liqflow.dto;
-
-import com.vnsnord.liqflow.domain.enums.LocationType;
+package com.vnsnord.liqflow.dto.response;
 
 import java.math.BigDecimal;
 import java.util.UUID;

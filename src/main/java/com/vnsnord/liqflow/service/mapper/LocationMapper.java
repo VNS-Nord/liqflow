@@ -1,8 +1,8 @@
 package com.vnsnord.liqflow.service.mapper;
 
 import com.vnsnord.liqflow.domain.entity.Location;
-import com.vnsnord.liqflow.dto.CreateLocationRequest;
-import com.vnsnord.liqflow.dto.LocationResponse;
+import com.vnsnord.liqflow.dto.request.CreateLocationRequest;
+import com.vnsnord.liqflow.dto.response.LocationResponse;
 import org.springframework.stereotype.Component;
 
 /**

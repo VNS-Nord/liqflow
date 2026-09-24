@@ -1,4 +1,4 @@
-package com.vnsnord.liqflow.dto;
+package com.vnsnord.liqflow.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

@@ -2,9 +2,9 @@ package com.vnsnord.liqflow.service;
 
 import com.vnsnord.liqflow.domain.entity.Location;
 import com.vnsnord.liqflow.domain.enums.LocationType;
-import com.vnsnord.liqflow.dto.CreateLocationRequest;
-import com.vnsnord.liqflow.dto.LocationResponse;
-import com.vnsnord.liqflow.dto.UpdateLocationRequest;
+import com.vnsnord.liqflow.dto.request.CreateLocationRequest;
+import com.vnsnord.liqflow.dto.response.LocationResponse;
+import com.vnsnord.liqflow.dto.request.UpdateLocationRequest;
 import com.vnsnord.liqflow.exception.ConflictException;
 import com.vnsnord.liqflow.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;

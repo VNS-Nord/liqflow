@@ -1,4 +1,4 @@
-package com.vnsnord.liqflow.dto;
+package com.vnsnord.liqflow.dto.response;
 
 import com.vnsnord.liqflow.domain.enums.LocationType;
 

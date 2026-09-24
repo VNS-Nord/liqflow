@@ -3,7 +3,7 @@ package com.vnsnord.liqflow.service.mapper;
 import com.vnsnord.liqflow.domain.entity.Inventory;
 import com.vnsnord.liqflow.domain.entity.Location;
 import com.vnsnord.liqflow.domain.entity.Product;
-import com.vnsnord.liqflow.dto.InventoryResponse;
+import com.vnsnord.liqflow.dto.response.InventoryResponse;
 import org.springframework.stereotype.Component;
 
 /**

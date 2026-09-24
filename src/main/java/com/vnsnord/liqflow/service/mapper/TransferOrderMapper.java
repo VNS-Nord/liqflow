@@ -4,9 +4,9 @@ import com.vnsnord.liqflow.domain.entity.Location;
 import com.vnsnord.liqflow.domain.entity.Product;
 import com.vnsnord.liqflow.domain.entity.TransferOrder;
 import com.vnsnord.liqflow.domain.entity.TransferOrderItem;
-import com.vnsnord.liqflow.dto.TransferOrderDetailResponse;
-import com.vnsnord.liqflow.dto.TransferOrderItemResponse;
-import com.vnsnord.liqflow.dto.TransferOrderResponse;
+import com.vnsnord.liqflow.dto.response.TransferOrderDetailResponse;
+import com.vnsnord.liqflow.dto.response.TransferOrderItemResponse;
+import com.vnsnord.liqflow.dto.response.TransferOrderResponse;
 import org.springframework.stereotype.Component;
 
 /**

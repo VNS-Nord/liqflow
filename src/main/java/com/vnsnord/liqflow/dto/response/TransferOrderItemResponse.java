@@ -1,4 +1,4 @@
-package com.vnsnord.liqflow.dto;
+package com.vnsnord.liqflow.dto.response;
 
 import java.util.UUID;
 

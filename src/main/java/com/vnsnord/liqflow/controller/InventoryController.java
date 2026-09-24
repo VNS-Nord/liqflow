@@ -1,8 +1,8 @@
 package com.vnsnord.liqflow.controller;
 
-import com.vnsnord.liqflow.dto.CreateInventoryRequest;
-import com.vnsnord.liqflow.dto.InventoryResponse;
-import com.vnsnord.liqflow.dto.StockMovementRequest;
+import com.vnsnord.liqflow.dto.request.CreateInventoryRequest;
+import com.vnsnord.liqflow.dto.response.InventoryResponse;
+import com.vnsnord.liqflow.dto.request.StockMovementRequest;
 import com.vnsnord.liqflow.service.InventoryService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;

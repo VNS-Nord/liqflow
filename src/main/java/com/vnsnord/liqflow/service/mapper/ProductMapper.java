@@ -1,8 +1,8 @@
 package com.vnsnord.liqflow.service.mapper;
 
 import com.vnsnord.liqflow.domain.entity.Product;
-import com.vnsnord.liqflow.dto.CreateProductRequest;
-import com.vnsnord.liqflow.dto.ProductResponse;
+import com.vnsnord.liqflow.dto.request.CreateProductRequest;
+import com.vnsnord.liqflow.dto.response.ProductResponse;
 import org.springframework.stereotype.Component;
 
 /**

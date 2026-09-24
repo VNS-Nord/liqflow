@@ -1,4 +1,4 @@
-package com.vnsnord.liqflow.dto;
+package com.vnsnord.liqflow.dto.request;
 
 import com.vnsnord.liqflow.domain.enums.LocationType;
 import jakarta.validation.constraints.NotBlank;

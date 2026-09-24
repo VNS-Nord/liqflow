@@ -1,8 +1,7 @@
 package com.vnsnord.liqflow.controller;
 
-import com.vnsnord.liqflow.dto.CreateInventoryRequest;
-import com.vnsnord.liqflow.dto.InventoryResponse;
-import com.vnsnord.liqflow.dto.StockMovementRequest;
+import com.vnsnord.liqflow.dto.request.CreateInventoryRequest;
+import com.vnsnord.liqflow.dto.response.InventoryResponse;
 import com.vnsnord.liqflow.exception.InventoryNotFoundException;
 import com.vnsnord.liqflow.service.InventoryService;
 import org.junit.jupiter.api.Test;

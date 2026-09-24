@@ -1,9 +1,9 @@
 package com.vnsnord.liqflow.controller;
 
 import com.vnsnord.liqflow.domain.enums.LocationType;
-import com.vnsnord.liqflow.dto.CreateLocationRequest;
-import com.vnsnord.liqflow.dto.LocationResponse;
-import com.vnsnord.liqflow.dto.UpdateLocationRequest;
+import com.vnsnord.liqflow.dto.request.CreateLocationRequest;
+import com.vnsnord.liqflow.dto.response.LocationResponse;
+import com.vnsnord.liqflow.dto.request.UpdateLocationRequest;
 import com.vnsnord.liqflow.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.service.LocationService;
 import org.junit.jupiter.api.Test;
