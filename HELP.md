@@ -10,7 +10,6 @@ For further reference, please consider the following sections:
 * [Spring Data JPA](https://docs.spring.io/spring-boot/4.1.1/reference/data/sql.html#data.sql.jpa-and-spring-data)
 * [Validation](https://docs.spring.io/spring-boot/4.1.1/reference/io/validation.html)
 * [Flyway Migration](https://docs.spring.io/spring-boot/4.1.1/how-to/data-initialization.html#howto.data-initialization.migration-tool.flyway)
-* [Spring for Apache Kafka](https://docs.spring.io/spring-boot/4.1.1/reference/messaging/kafka.html)
 
 ### Guides
 The following guides illustrate how to use some features concretely:

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -187,6 +188,21 @@ public class GlobalExceptionHandler
     public ResponseEntity<ErrorResponse> handleIllegalArgument(RuntimeException ex, HttpServletRequest request)
     {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
+    }
+
+    /**
+     * Handles pessimistic-lock failures, covering both lock-acquisition timeouts
+     * and deadlocks. Both are transient and both share the optimistic-locking
+     * remedy of asking the client to retry.
+     *
+     * @param ex      the pessimistic-locking exception
+     * @param request the current HTTP request
+     * @return a 409 response advising the client to retry
+     */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handlePessimisticLocking(PessimisticLockingFailureException ex, HttpServletRequest request)
+    {
+        return build(HttpStatus.CONFLICT, "Could not acquire the required stock locks; please retry", request, null);
     }
 
     /**

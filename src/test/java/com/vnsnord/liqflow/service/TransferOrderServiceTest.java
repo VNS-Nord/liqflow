@@ -4,7 +4,10 @@ import com.vnsnord.liqflow.domain.entity.Inventory;
 import com.vnsnord.liqflow.domain.entity.Location;
 import com.vnsnord.liqflow.domain.entity.Product;
 import com.vnsnord.liqflow.domain.entity.TransferOrder;
+import com.vnsnord.liqflow.domain.entity.TransferOrderItem;
+import com.vnsnord.liqflow.domain.entity.TransferOrderReservation;
 import com.vnsnord.liqflow.domain.enums.LocationType;
+import com.vnsnord.liqflow.domain.enums.ReservationStatus;
 import com.vnsnord.liqflow.domain.enums.TransferOrderStatus;
 import com.vnsnord.liqflow.dto.request.CreateTransferOrderRequest;
 import com.vnsnord.liqflow.dto.response.TransferOrderDetailResponse;
@@ -17,6 +20,7 @@ import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.LocationRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.ProductRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderRepository;
+import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderReservationRepository;
 import com.vnsnord.liqflow.service.mapper.TransferOrderMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +53,8 @@ public class TransferOrderServiceTest
     private ProductRepository productRepository;
     @Mock
     private InventoryRepository inventoryRepository;
+    @Mock
+    private TransferOrderReservationRepository reservationRepository;
     @Mock
     private TransferOrderMapper transferOrderMapper;
     @InjectMocks
@@ -309,21 +316,27 @@ public class TransferOrderServiceTest
     }
 
     @Test
-    void submit_ShouldTransitionToSubmitted()
+    void submit_ShouldReserveSourceStockAndTransitionToSubmitted()
     {
         // Given
         UUID orderId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
         Instant now = Instant.now();
-        Location source = createLocation(UUID.randomUUID(), "WH-MAIN", "Central Warehouse");
+        Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
         Location target = createLocation(UUID.randomUUID(), "WH-HUB", "Regional Hub");
+        Product product = createProduct(productId, "PROD-1", "Laptop");
         TransferOrder order = createTransferOrder(orderId, source, target, now);
-        order.addItem(createProduct(UUID.randomUUID(), "PROD-1", "Laptop"), 2);
+        order.addItem(product, 2);
 
+        Inventory sourceInventory = new Inventory(source, product, 10, 0);
         TransferOrderResponse dto = new TransferOrderResponse(
                 orderId, "TR-10001", source.getId(), "WH-MAIN", target.getId(), "WH-HUB",
                 TransferOrderStatus.SUBMITTED, now);
 
         Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
+                .thenReturn(Optional.of(sourceInventory));
         Mockito.when(transferOrderRepository.save(order)).thenReturn(order);
         Mockito.when(transferOrderMapper.toResponse(order)).thenReturn(dto);
 
@@ -333,7 +346,35 @@ public class TransferOrderServiceTest
         // Then
         Assertions.assertEquals(TransferOrderStatus.SUBMITTED, result.status());
         Assertions.assertEquals(TransferOrderStatus.SUBMITTED, order.getStatus());
+        Assertions.assertEquals(2, sourceInventory.getReservedQuantity());
+        Assertions.assertEquals(10, sourceInventory.getQuantity());
+        Assertions.assertEquals(8, sourceInventory.getAvailableQuantity());
+        Mockito.verify(reservationRepository).save(Mockito.any(TransferOrderReservation.class));
         Mockito.verify(transferOrderRepository).save(order);
+    }
+
+    @Test
+    void submit_ShouldThrow_WhenSourceStockIsInsufficient()
+    {
+        // Given
+        UUID orderId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
+        Location target = createLocation(UUID.randomUUID(), "WH-HUB", "Regional Hub");
+        Product product = createProduct(productId, "PROD-1", "Laptop");
+        TransferOrder order = createTransferOrder(orderId, source, target, Instant.now());
+        order.addItem(product, 9);
+
+        Inventory sourceInventory = new Inventory(source, product, 5, 0);
+
+        Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
+                .thenReturn(Optional.of(sourceInventory));
+
+        // When & Then
+        Assertions.assertThrows(IllegalStateException.class, () -> transferOrderService.submit(orderId));
+        Mockito.verify(reservationRepository, Mockito.never()).save(Mockito.any());
     }
 
     @Test
@@ -345,15 +386,21 @@ public class TransferOrderServiceTest
         UUID sourceId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
 
         Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
         Location target = createLocation(targetId, "WH-HUB", "Regional Hub");
         Product product = createProduct(productId, "PROD-1", "Laptop");
         TransferOrder order = createTransferOrder(orderId, source, target, now);
         order.addItem(product, 5);
+        TransferOrderItem item = order.getItems().getFirst();
+        ReflectionTestUtils.setField(item, "id", itemId);
         ReflectionTestUtils.setField(order, "status", TransferOrderStatus.IN_TRANSIT);
 
+        TransferOrderReservation reservation = new TransferOrderReservation(order, item, product, source, 5);
+
         Inventory sourceInventory = new Inventory(source, product, 10, 0);
+        sourceInventory.reserveStock(5);
         Inventory targetInventory = new Inventory(target, product, 1, 0);
 
         TransferOrderResponse dto = new TransferOrderResponse(
@@ -361,6 +408,8 @@ public class TransferOrderServiceTest
                 TransferOrderStatus.COMPLETED, now);
 
         Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdForUpdate(orderId))
+                .thenReturn(List.of(reservation));
         Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
                 .thenReturn(Optional.of(sourceInventory));
         Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, targetId))
@@ -374,8 +423,87 @@ public class TransferOrderServiceTest
         // Then
         Assertions.assertEquals(TransferOrderStatus.COMPLETED, result.status());
         Assertions.assertEquals(5, sourceInventory.getQuantity());
+        Assertions.assertEquals(0, sourceInventory.getReservedQuantity());
         Assertions.assertEquals(6, targetInventory.getQuantity());
+        Assertions.assertEquals(ReservationStatus.CONSUMED, reservation.getStatus());
         Mockito.verify(transferOrderRepository).save(order);
+    }
+
+    @Test
+    void complete_ShouldThrow_WhenAnItemHasNoReservation()
+    {
+        // Given
+        UUID orderId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+
+        Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
+        Location target = createLocation(targetId, "WH-HUB", "Regional Hub");
+        Product product = createProduct(productId, "PROD-1", "Laptop");
+        TransferOrder order = createTransferOrder(orderId, source, target, Instant.now());
+        order.addItem(product, 5);
+        ReflectionTestUtils.setField(order.getItems().getFirst(), "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(order, "status", TransferOrderStatus.IN_TRANSIT);
+
+        Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdForUpdate(orderId)).thenReturn(List.of());
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
+                .thenReturn(Optional.of(new Inventory(source, product, 10, 0)));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, targetId))
+                .thenReturn(Optional.of(new Inventory(target, product, 1, 0)));
+
+        // When & Then
+        Assertions.assertThrows(IllegalStateException.class, () -> transferOrderService.complete(orderId));
+        Mockito.verify(transferOrderRepository, Mockito.never()).save(Mockito.any());
+    }
+
+    @Test
+    void complete_ShouldNeverTouchStockReservedForAnotherOrder()
+    {
+        // Given: order A holds 5 units, order B holds 3 of the same product at
+        // the same source. Only A is being completed.
+        UUID orderId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
+        Location target = createLocation(targetId, "WH-HUB", "Regional Hub");
+        Product product = createProduct(productId, "PROD-1", "Laptop");
+        TransferOrder order = createTransferOrder(orderId, source, target, Instant.now());
+        order.addItem(product, 5);
+        TransferOrderItem item = order.getItems().getFirst();
+        ReflectionTestUtils.setField(item, "id", itemId);
+        ReflectionTestUtils.setField(order, "status", TransferOrderStatus.IN_TRANSIT);
+
+        TransferOrderReservation reservation = new TransferOrderReservation(order, item, product, source, 5);
+
+        Inventory sourceInventory = new Inventory(source, product, 10, 0);
+        sourceInventory.reserveStock(5);
+        sourceInventory.reserveStock(3);
+        Inventory targetInventory = new Inventory(target, product, 1, 0);
+
+        Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdForUpdate(orderId))
+                .thenReturn(List.of(reservation));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
+                .thenReturn(Optional.of(sourceInventory));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, targetId))
+                .thenReturn(Optional.of(targetInventory));
+        Mockito.when(transferOrderRepository.save(order)).thenReturn(order);
+        Mockito.when(transferOrderMapper.toResponse(order))
+                .thenReturn(new TransferOrderResponse(orderId, "TR-10001", sourceId, "WH-MAIN",
+                        targetId, "WH-HUB", TransferOrderStatus.COMPLETED, Instant.now()));
+
+        // When
+        transferOrderService.complete(orderId);
+
+        // Then: order B's 3 units are still reserved and still physically present.
+        Assertions.assertEquals(5, sourceInventory.getQuantity());
+        Assertions.assertEquals(3, sourceInventory.getReservedQuantity());
+        Assertions.assertEquals(2, sourceInventory.getAvailableQuantity());
     }
 
     @Test
@@ -393,6 +521,8 @@ public class TransferOrderServiceTest
                 TransferOrderStatus.CANCELLED, now);
 
         Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdAndStatus(orderId, ReservationStatus.HELD))
+                .thenReturn(List.of());
         Mockito.when(transferOrderRepository.save(order)).thenReturn(order);
         Mockito.when(transferOrderMapper.toResponse(order)).thenReturn(dto);
 
@@ -402,6 +532,114 @@ public class TransferOrderServiceTest
         // Then
         Assertions.assertEquals(TransferOrderStatus.CANCELLED, result.status());
         Mockito.verify(transferOrderRepository).save(order);
+    }
+
+    @Test
+    void cancel_ShouldReleaseHeldReservations()
+    {
+        // Given
+        UUID orderId = UUID.randomUUID();
+        UUID sourceId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        Location source = createLocation(sourceId, "WH-MAIN", "Central Warehouse");
+        Location target = createLocation(UUID.randomUUID(), "WH-HUB", "Regional Hub");
+        Product product = createProduct(productId, "PROD-1", "Laptop");
+        TransferOrder order = createTransferOrder(orderId, source, target, Instant.now());
+        order.addItem(product, 4);
+        TransferOrderItem item = order.getItems().getFirst();
+        ReflectionTestUtils.setField(item, "id", itemId);
+
+        TransferOrderReservation reservation = new TransferOrderReservation(order, item, product, source, 4);
+
+        Inventory sourceInventory = new Inventory(source, product, 10, 0);
+        sourceInventory.reserveStock(4);
+
+        Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdAndStatus(orderId, ReservationStatus.HELD))
+                .thenReturn(List.of(reservation));
+        Mockito.when(inventoryRepository.findByProductIdAndLocationIdForUpdate(productId, sourceId))
+                .thenReturn(Optional.of(sourceInventory));
+        Mockito.when(transferOrderRepository.save(order)).thenReturn(order);
+        Mockito.when(transferOrderMapper.toResponse(order))
+                .thenReturn(new TransferOrderResponse(orderId, "TR-10001", sourceId, "WH-MAIN",
+                        target.getId(), "WH-HUB", TransferOrderStatus.CANCELLED, Instant.now()));
+
+        // When
+        transferOrderService.cancel(orderId);
+
+        // Then: the held units are back in the available quantity.
+        Assertions.assertEquals(10, sourceInventory.getQuantity());
+        Assertions.assertEquals(0, sourceInventory.getReservedQuantity());
+        Assertions.assertEquals(10, sourceInventory.getAvailableQuantity());
+        Assertions.assertEquals(ReservationStatus.RELEASED, reservation.getStatus());
+    }
+
+    @Test
+    void complete_ShouldLockInventoriesInTheSameOrderRegardlessOfItemOrder()
+    {
+        // Given: two orders covering the same two locations and two products,
+        // but listing the items in opposite order. Deterministic locking is
+        // what stops these two from deadlocking against each other, so the
+        // property under test is that both produce an identical lock sequence.
+        UUID lowLocationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID highLocationId = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
+        UUID lowProductId = UUID.fromString("00000000-0000-0000-0000-00000000000a");
+        UUID highProductId = UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffa");
+
+        Location source = createLocation(lowLocationId, "WH-A", "Source A");
+        Location target = createLocation(highLocationId, "WH-B", "Target B");
+        Product lowProduct = createProduct(lowProductId, "PROD-LOW", "Low");
+        Product highProduct = createProduct(highProductId, "PROD-HIGH", "High");
+
+        List<UUID> forwardSequence = lockSequenceFor(orderWithItemsInOrder(source, target, highProduct, lowProduct));
+        List<UUID> reversedSequence = lockSequenceFor(orderWithItemsInOrder(source, target, lowProduct, highProduct));
+
+        // Then
+        Assertions.assertEquals(forwardSequence, reversedSequence);
+        Assertions.assertEquals(4, forwardSequence.size());
+        Assertions.assertEquals(2, forwardSequence.stream().distinct().count());
+    }
+
+    /**
+     * Runs completion for an order carrying the given items and returns the
+     * order in which inventory locks were acquired. Completion itself is
+     * expected to fail, since no reservations were set up; only the lock
+     * sequence matters here.
+     */
+    private List<UUID> lockSequenceFor(TransferOrder order)
+    {
+        UUID orderId = order.getId();
+        List<UUID> lockSequence = new ArrayList<>();
+
+        Mockito.when(transferOrderRepository.findWithDetailsById(orderId)).thenReturn(Optional.of(order));
+        Mockito.when(reservationRepository.findByTransferOrderIdForUpdate(orderId)).thenReturn(List.of());
+        Mockito.doAnswer(invocation ->
+        {
+            UUID locationId = invocation.getArgument(1);
+            lockSequence.add(locationId);
+            return Optional.of(new Inventory(
+                    locationId.equals(order.getSourceLocation().getId())
+                            ? order.getSourceLocation() : order.getTargetLocation(),
+                    new Product("SKU", "Name", "Desc", BigDecimal.ONE), 10, 0));
+        }).when(inventoryRepository)
+                .findByProductIdAndLocationIdForUpdate(Mockito.any(), Mockito.any());
+
+        Assertions.assertThrows(IllegalStateException.class, () -> transferOrderService.complete(orderId));
+        return lockSequence;
+    }
+
+    private TransferOrder orderWithItemsInOrder(Location source, Location target, Product... products)
+    {
+        TransferOrder order = createTransferOrder(UUID.randomUUID(), source, target, Instant.now());
+        for (Product product : products)
+        {
+            order.addItem(product, 1);
+            ReflectionTestUtils.setField(order.getItems().getLast(), "id", UUID.randomUUID());
+        }
+        ReflectionTestUtils.setField(order, "status", TransferOrderStatus.IN_TRANSIT);
+        return order;
     }
 
     private Product createProduct(UUID id, String sku, String name)

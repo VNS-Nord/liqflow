@@ -15,8 +15,8 @@ import java.util.UUID;
  *
  * <p>The available quantity is computed as the physical quantity minus the
  * reserved quantity ({@link #getAvailableQuantity()}). Stock can be reserved,
- * released, deducted, or added through the domain methods on this class, all of
- * which enforce the required invariants.</p>
+ * released, consumed, deducted, or added through the domain methods on this
+ * class, all of which enforce the required invariants.</p>
  *
  * @see Location
  * @see Product
@@ -166,10 +166,36 @@ public class Inventory
     }
 
     /**
+     * Consumes a quantity that was previously reserved, removing it from both
+     * the physical stock and the reserved quantity. This is the counterpart of
+     * {@link #reserveStock(int)} for a movement that actually ships the goods:
+     * unlike {@link #deductStock(int)} it never touches units reserved for a
+     * different holder.
+     *
+     * @param amount the number of reserved units to consume (must be &gt; 0)
+     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalStateException    if {@code amount} exceeds the reserved quantity
+     */
+    public void consumeReservedStock(int amount)
+    {
+        if (amount <= 0)
+        {
+            throw new IllegalArgumentException("Quantity to consume must be greater than zero");
+        }
+        if (this.reservedQuantity < amount)
+        {
+            throw new IllegalStateException("Cannot consume more than currently reserved stock");
+        }
+        this.reservedQuantity -= amount;
+        this.quantity -= amount;
+    }
+
+    /**
      * Adds a quantity to the physical stock on hand.
      *
      * @param amount the number of units to add (must be &gt; 0)
-     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalArgumentException if {@code amount} is &le; 0, or if the
+     *                                  resulting quantity would not fit in an {@code int}
      */
     public void addStock(int amount)
     {
@@ -177,7 +203,14 @@ public class Inventory
         {
             throw new IllegalArgumentException("Quantity to add must be greater than zero");
         }
-        this.quantity += amount;
+        try
+        {
+            this.quantity = Math.addExact(this.quantity, amount);
+        }
+        catch (ArithmeticException exception)
+        {
+            throw new IllegalArgumentException("Quantity would exceed the maximum supported value", exception);
+        }
     }
 
     /**

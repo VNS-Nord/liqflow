@@ -9,6 +9,7 @@ import com.vnsnord.liqflow.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.LocationRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderRepository;
+import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderReservationRepository;
 import com.vnsnord.liqflow.service.mapper.LocationMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ public class LocationService
     private final LocationRepository locationRepository;
     private final InventoryRepository inventoryRepository;
     private final TransferOrderRepository transferOrderRepository;
+    private final TransferOrderReservationRepository reservationRepository;
     private final LocationMapper locationMapper;
 
     /**
@@ -35,16 +37,19 @@ public class LocationService
      * @param locationRepository     the location repository
      * @param inventoryRepository    the inventory repository
      * @param transferOrderRepository the transfer order repository
+     * @param reservationRepository  the transfer order reservation repository
      * @param locationMapper         the location mapper
      */
     public LocationService(LocationRepository locationRepository,
                            InventoryRepository inventoryRepository,
                            TransferOrderRepository transferOrderRepository,
+                           TransferOrderReservationRepository reservationRepository,
                            LocationMapper locationMapper)
     {
         this.locationRepository = locationRepository;
         this.inventoryRepository = inventoryRepository;
         this.transferOrderRepository = transferOrderRepository;
+        this.reservationRepository = reservationRepository;
         this.locationMapper = locationMapper;
     }
 
@@ -127,7 +132,8 @@ public class LocationService
      *
      * @param id the location identifier
      * @throws LocationNotFoundException if no location exists with the given id
-     * @throws IllegalStateException    if the location has inventory records or is referenced by transfer orders
+     * @throws IllegalStateException     if the location has inventory records, or is referenced by
+     *                                   transfer orders or transfer order reservations
      */
     @Transactional
     public void deleteLocation(UUID id)
@@ -140,6 +146,10 @@ public class LocationService
         if (transferOrderRepository.existsByLocationId(id))
         {
             throw new IllegalStateException("Location cannot be deleted because it is referenced by transfer orders");
+        }
+        if (reservationRepository.existsByLocationId(id))
+        {
+            throw new IllegalStateException("Location cannot be deleted because it is referenced by transfer order reservations");
         }
         locationRepository.delete(location);
     }

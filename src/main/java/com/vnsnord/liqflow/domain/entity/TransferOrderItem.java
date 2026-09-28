@@ -67,14 +67,22 @@ public class TransferOrderItem
      * Increases the quantity for this item.
      *
      * @param amount the amount to add (must be &gt; 0)
-     * @throws IllegalArgumentException if {@code amount} is &le; 0
+     * @throws IllegalArgumentException if {@code amount} is &le; 0, or if the
+     *                                  resulting quantity would not fit in an {@code Integer}
      */
     void addQuantity(int amount) {
         if (amount <= 0)
         {
             throw new IllegalArgumentException("Amount must be greater than zero");
         }
-        this.quantity += amount;
+        try
+        {
+            this.quantity = Math.addExact(this.quantity, amount);
+        }
+        catch (ArithmeticException exception)
+        {
+            throw new IllegalArgumentException("Quantity would exceed the maximum supported value", exception);
+        }
     }
 
     /**

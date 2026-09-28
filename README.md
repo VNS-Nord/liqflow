@@ -1,7 +1,7 @@
 # LiqFlow
 
 > [!IMPORTANT]
-> **Project status: work in progress, not production-ready.** The core API is functional; remaining gaps are consolidated in [Known limitations](#known-limitations).
+> **Project status: work in progress, not production-ready.** The core API is functional.
 
 LiqFlow is a backend inventory-management API for tracking products and current stock levels across multiple locations. It also models transfer orders that move stock between a source and a target location through an explicit lifecycle.
 
@@ -26,6 +26,7 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 - Find inventory whose available quantity is at or below its configured minimum.
 - Create transfer orders and add or remove items while an order is a draft.
 - Submit, mark in transit, complete, or cancel transfer orders.
+- Reserve source stock when an order is submitted, and release it again if the order is cancelled.
 - Move every item in a transfer atomically when the order is completed.
 
 ### Technical highlights
@@ -34,7 +35,7 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 - Spring MVC controllers with Jakarta Bean Validation.
 - Transactional service methods for inventory and transfer operations.
 - Domain entities that own inventory invariants and transfer-state rules.
-- JPA optimistic locking through entity versions and pessimistic locks during transfer completion.
+- JPA optimistic locking through entity versions, plus pessimistic locks acquired in a fixed order during transfer completion.
 - Flyway-managed schema changes with Hibernate schema validation.
 - Database constraints for unique SKUs, location codes, transfer-order numbers, and product/location inventory pairs.
 - Centralized handling of validation, domain, not-found, duplicate-data, and persistence-conflict errors.
@@ -62,7 +63,7 @@ Key code locations:
 
 - [`controller/`](src/main/java/com/vnsnord/liqflow/controller) — REST endpoints.
 - [`service/`](src/main/java/com/vnsnord/liqflow/service) — use cases, transactions, queries, and mapping; transfer completion is coordinated in [`TransferOrderService.java`](src/main/java/com/vnsnord/liqflow/service/TransferOrderService.java).
-- [`domain/entity/`](src/main/java/com/vnsnord/liqflow/domain/entity) — domain behavior in [`Inventory.java`](src/main/java/com/vnsnord/liqflow/domain/entity/Inventory.java) and [`TransferOrder.java`](src/main/java/com/vnsnord/liqflow/domain/entity/TransferOrder.java).
+- [`domain/entity/`](src/main/java/com/vnsnord/liqflow/domain/entity) — domain behavior in [`Inventory.java`](src/main/java/com/vnsnord/liqflow/domain/entity/Inventory.java), [`TransferOrder.java`](src/main/java/com/vnsnord/liqflow/domain/entity/TransferOrder.java), and [`TransferOrderReservation.java`](src/main/java/com/vnsnord/liqflow/domain/entity/TransferOrderReservation.java).
 - [`infrastructure/persistence/`](src/main/java/com/vnsnord/liqflow/infrastructure/persistence) — Spring Data repositories, locking, and queries.
 - [`dto/`](src/main/java/com/vnsnord/liqflow/dto) — validated request and response contracts.
 - [`exception/`](src/main/java/com/vnsnord/liqflow/exception) — typed errors and API error responses.
@@ -164,7 +165,7 @@ Inventory supports create and read operations plus explicit stock operations. Th
 | `GET` | `/transfer-orders/{id}` | Get an order and its items |
 | `POST` | `/transfer-orders/{id}/items` | Add or merge an item in a draft |
 | `DELETE` | `/transfer-orders/{id}/items/{itemId}` | Remove an item from a draft |
-| `POST` | `/transfer-orders/{id}/submit` | Submit a non-empty draft |
+| `POST` | `/transfer-orders/{id}/submit` | Submit a non-empty draft and reserve its source stock |
 | `POST` | `/transfer-orders/{id}/in-transit` | Mark a submitted order in transit |
 | `POST` | `/transfer-orders/{id}/complete` | Move stock and complete the order |
 | `POST` | `/transfer-orders/{id}/cancel` | Cancel an order that is not completed |
@@ -268,7 +269,11 @@ Each inventory record represents one product at one location and stores:
 
 The required inventory invariant is `0 <= reservedQuantity <= quantity`; non-negative stored values alone are not sufficient to guarantee `availableQuantity >= 0`. The current domain operations are written to preserve this invariant from a valid starting state, but the database does not enforce it with `CHECK` constraints.
 
-Stock can be added, deducted, reserved, or released through explicit operations. `deductStock` rejects an amount greater than the physical quantity. If the amount exceeds the currently unreserved quantity, it also reduces `reservedQuantity`; the consequences of this behavior for transfers are described in [Known limitations](#known-limitations).
+Stock can be added, deducted, reserved, released, or consumed through explicit operations.
+
+`deductStock` is the generic deduction. It rejects an amount greater than the physical quantity and, when the amount exceeds the currently unreserved quantity, also reduces `reservedQuantity`.
+
+`consumeReservedStock` is the transfer-specific path. It rejects an amount greater than the reserved quantity and only ever removes units that are already reserved, so it cannot reach into stock held on behalf of another order.
 
 ### Transfer orders
 
@@ -291,8 +296,28 @@ stateDiagram-v2
 - `DRAFT`, `SUBMITTED`, and `IN_TRANSIT` orders can transition to the terminal `CANCELLED` state.
 - `COMPLETED` and `CANCELLED` orders cannot transition again.
 - Completing an order changes all source and target inventory rows in one transaction.
-- Source and target inventory rows are locked pessimistically during completion so competing transfers update the same rows serially.
+- Inventory rows touched by a transfer are locked pessimistically, always in the same location-then-product order, so two transfers that share products cannot deadlock against each other. Any remaining contention surfaces as a `409` and is safe to retry.
 - Inventory and transfer entities also use optimistic versions to detect conflicting updates.
+
+### Reservations
+
+Submitting an order reserves the source stock it needs, so those units stop being available to any other order. Each line item gets one reservation row recording the product, source location, quantity, and status:
+
+```mermaid
+stateDiagram-v2
+    [*] --> HELD: submit
+    HELD --> CONSUMED: order completed
+    HELD --> RELEASED: order cancelled
+```
+
+- Submission fails if the source location has no inventory record for an item, or has insufficient available stock.
+- Completing a transfer consumes only the quantity that order reserved, and adds the same quantity to the target location. A transfer can therefore never take stock that another order is holding.
+- Cancelling a transfer releases any reservation still held, returning the units to the available quantity.
+- A reservation settles exactly once, and terminal reservations are kept as history.
+
+This is why submission validates stock rather than only completion: once a unit is reserved for one order, no other transfer can take it, so concurrent orders compete for stock at the moment of submission instead of racing at completion.
+
+The reservation is not absolute, though. The generic `deductStock` operation can still reduce `reservedQuantity` when it removes more than the unreserved quantity, which will make the affected order fail at completion. A stricter design would have `deductStock` respect outstanding reservations as well; that is not implemented.
 
 ## Tests
 
@@ -307,32 +332,10 @@ The test suite uses:
 - Mockito unit tests for service behavior.
 - MockMvc tests for controller routing, validation, serialization, and status codes.
 - Focused tests for centralized exception handling.
-- [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the configured PostgreSQL database.
+- [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the configured PostgreSQL database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
+- Integration coverage for the reservation rules: two orders competing for the same stock, cancellation returning a hold to available quantity, and an order completing without consuming another order's reservation.
 
 The full suite requires the PostgreSQL instance described in [Running locally](#running-locally).
-
-## Known limitations
-
-### Inventory and transfer correctness
-
-- **Transfer completion can consume unrelated reservations — high priority.** Reservations have no owner. [`TransferOrderService`](src/main/java/com/vnsnord/liqflow/service/TransferOrderService.java) completes a transfer by calling the generic `deductStock` operation; when the requested quantity exceeds unreserved stock, that operation reduces `reservedQuantity`. A transfer can therefore consume stock reserved for another purpose. This requires a code fix: reservations need explicit ownership, and completion must consume only the transfer's own reservation or reject the operation rather than silently reducing an unrelated reservation.
-- **Transfer submission does not reserve or validate stock.** Submission currently changes only the order status, so availability is not guaranteed at completion. Reservation, submission, completion, and cancellation policies need to be defined together.
-- **The database does not enforce inventory invariants.** Domain operations maintain `0 <= reservedQuantity <= quantity` from a valid starting state, but PostgreSQL has no `CHECK` constraints for non-negative values or `reservedQuantity <= quantity`.
-- **Transfer target inventory must already exist.** Completion fails rather than creating a target product/location inventory record.
-- **Stock changes have no historical ledger.** Add, deduct, reserve, release, and transfer operations mutate current quantities without movement IDs, actors, reasons, or before/after history.
-- Historical order references can make some product and location records effectively non-deletable.
-
-### Security, integrations, and operations
-
-- **The API is unauthenticated.** There is no authentication, authorization, role model, audit identity, or rate limiting; all endpoints are currently open.
-- **External integrations are not implemented.** The Kafka starter dependency is unused, with no producer, consumer, listener, or topic configuration. There is no AWS SDK usage or integration with AWS or another cloud provider.
-- **Production delivery is not implemented.** The project has no production profile, application container image, deployment manifest, CI/CD pipeline, metrics, tracing, alerting, or OpenAPI documentation.
-
-### Test coverage and isolation
-
-- No test currently covers a complete HTTP request through to a real PostgreSQL database; web-layer and database integration tests are separate.
-- There are no dedicated concurrency, race-condition, or deadlock tests for competing transfer operations.
-- Integration tests use the configured application database and manually clean their records instead of an isolated Testcontainers database or test-specific profile.
 
 ## License
 

@@ -9,7 +9,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DeadlockLoserDataAccessException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -246,6 +249,48 @@ public class GlobalExceptionHandlerTest
         Assertions.assertEquals("Concurrent modification conflict; please retry", body.message());
 
         Mockito.verify(request).getRequestURI();
+    }
+
+    @Test
+    void handlePessimisticLocking_ShouldReturn409AndRetryMessage()
+    {
+        // Given
+        String path = "/api/v1/transfer-orders/complete";
+        Mockito.when(request.getRequestURI()).thenReturn(path);
+
+        PessimisticLockingFailureException exception =
+                new PessimisticLockingFailureException("could not lock row", new RuntimeException());
+
+        // When
+        ResponseEntity<ErrorResponse> response = globalExceptionHandler.handlePessimisticLocking(exception, request);
+
+        // Then
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+
+        ErrorResponse body = response.getBody();
+        Assertions.assertNotNull(body);
+        Assertions.assertEquals("Could not acquire the required stock locks; please retry", body.message());
+
+        Mockito.verify(request).getRequestURI();
+    }
+
+    @Test
+    void handlePessimisticLocking_ShouldCoverDeadlocksAndLockTimeouts()
+    {
+        // Given: a deadlock and a lock-acquisition timeout are both reported
+        // through the shared supertype, so one handler must cover both.
+        Mockito.when(request.getRequestURI()).thenReturn("/api/v1/transfer-orders/complete");
+
+        // When & Then
+        Assertions.assertEquals(HttpStatus.CONFLICT,
+                globalExceptionHandler.handlePessimisticLocking(
+                        new DeadlockLoserDataAccessException("deadlock", new RuntimeException()), request)
+                        .getStatusCode());
+        Assertions.assertEquals(HttpStatus.CONFLICT,
+                globalExceptionHandler.handlePessimisticLocking(
+                        new CannotAcquireLockException("timeout"), request)
+                        .getStatusCode());
     }
 
     @Test

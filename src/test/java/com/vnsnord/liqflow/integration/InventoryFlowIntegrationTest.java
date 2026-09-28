@@ -175,6 +175,100 @@ public class InventoryFlowIntegrationTest
         Assertions.assertTrue(target.getAvailableQuantity() >= 0);
     }
 
+    @Test
+    void completingOneOrder_ShouldNeverConsumeAnotherOrdersReservation()
+    {
+        // Given: two orders competing for the same source stock. Order A wants
+        // 6 of 10 units, order B wants the remaining 4. Submitting both must
+        // succeed, which only works if each holds its own reservation.
+        UUID productId = createProduct("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID sourceId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID targetId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        createInventory(sourceId, productId, 10, 0);
+        createInventory(targetId, productId, 0, 0);
+
+        UUID orderA = createTransferOrder(
+                "IT-A-" + UUID.randomUUID().toString().substring(0, 8), sourceId, targetId);
+        UUID orderB = createTransferOrder(
+                "IT-B-" + UUID.randomUUID().toString().substring(0, 8), sourceId, targetId);
+
+        transferOrderService.addItem(orderA, new TransferOrderItemRequest(productId, 6));
+        transferOrderService.addItem(orderB, new TransferOrderItemRequest(productId, 4));
+        transferOrderService.submit(orderA);
+        transferOrderService.submit(orderB);
+
+        Inventory afterBothSubmitted = inventoryRepository.findByProductIdAndLocationId(productId, sourceId)
+                .orElseThrow();
+        Assertions.assertEquals(10, afterBothSubmitted.getQuantity());
+        Assertions.assertEquals(10, afterBothSubmitted.getReservedQuantity());
+        Assertions.assertEquals(0, afterBothSubmitted.getAvailableQuantity());
+
+        // When: only order A is completed.
+        transferOrderService.markInTransit(orderA);
+        transferOrderService.complete(orderA);
+
+        // Then: order B's 4 units are still reserved, and still physically present.
+        Inventory afterCompletingA = inventoryRepository.findByProductIdAndLocationId(productId, sourceId)
+                .orElseThrow();
+        Assertions.assertEquals(4, afterCompletingA.getQuantity());
+        Assertions.assertEquals(4, afterCompletingA.getReservedQuantity());
+        Assertions.assertEquals(0, afterCompletingA.getAvailableQuantity());
+
+        // And order B can still complete on the strength of its own reservation.
+        transferOrderService.markInTransit(orderB);
+        transferOrderService.complete(orderB);
+
+        Inventory afterCompletingB = inventoryRepository.findByProductIdAndLocationId(productId, sourceId)
+                .orElseThrow();
+        Assertions.assertEquals(0, afterCompletingB.getQuantity());
+        Assertions.assertEquals(0, afterCompletingB.getReservedQuantity());
+    }
+
+    @Test
+    void cancel_ShouldReleaseReservedStockBackToTheSource()
+    {
+        // Given
+        UUID productId = createProduct("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID sourceId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID targetId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        createInventory(sourceId, productId, 10, 0);
+
+        UUID orderId = createTransferOrder(
+                "IT-C-" + UUID.randomUUID().toString().substring(0, 8), sourceId, targetId);
+        transferOrderService.addItem(orderId, new TransferOrderItemRequest(productId, 7));
+        transferOrderService.submit(orderId);
+
+        Inventory held = inventoryRepository.findByProductIdAndLocationId(productId, sourceId).orElseThrow();
+        Assertions.assertEquals(7, held.getReservedQuantity());
+        Assertions.assertEquals(3, held.getAvailableQuantity());
+
+        // When
+        transferOrderService.cancel(orderId);
+
+        // Then
+        Inventory released = inventoryRepository.findByProductIdAndLocationId(productId, sourceId).orElseThrow();
+        Assertions.assertEquals(10, released.getQuantity());
+        Assertions.assertEquals(0, released.getReservedQuantity());
+        Assertions.assertEquals(10, released.getAvailableQuantity());
+    }
+
+    @Test
+    void submit_ShouldFail_WhenSourceStockIsInsufficient()
+    {
+        // Given
+        UUID productId = createProduct("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID sourceId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID targetId = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        createInventory(sourceId, productId, 3, 0);
+
+        UUID orderId = createTransferOrder(
+                "IT-S-" + UUID.randomUUID().toString().substring(0, 8), sourceId, targetId);
+        transferOrderService.addItem(orderId, new TransferOrderItemRequest(productId, 9));
+
+        // When & Then
+        Assertions.assertThrows(IllegalStateException.class, () -> transferOrderService.submit(orderId));
+    }
+
     private UUID createProduct(String sku)
     {
         ProductResponse response = productService.createProduct(

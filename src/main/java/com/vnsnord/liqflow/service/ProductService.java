@@ -9,6 +9,7 @@ import com.vnsnord.liqflow.exception.ProductNotFoundException;
 import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.ProductRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderRepository;
+import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderReservationRepository;
 import com.vnsnord.liqflow.service.mapper.ProductMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ public class ProductService
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final TransferOrderRepository transferOrderRepository;
+    private final TransferOrderReservationRepository reservationRepository;
     private final ProductMapper productMapper;
 
     /**
@@ -35,16 +37,19 @@ public class ProductService
      * @param productRepository        the product repository
      * @param inventoryRepository      the inventory repository
      * @param transferOrderRepository  the transfer order repository
+     * @param reservationRepository    the transfer order reservation repository
      * @param productMapper            the product mapper
      */
     public ProductService(ProductRepository productRepository,
                           InventoryRepository inventoryRepository,
                           TransferOrderRepository transferOrderRepository,
+                          TransferOrderReservationRepository reservationRepository,
                           ProductMapper productMapper)
     {
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.transferOrderRepository = transferOrderRepository;
+        this.reservationRepository = reservationRepository;
         this.productMapper = productMapper;
     }
 
@@ -127,7 +132,8 @@ public class ProductService
      *
      * @param id the product identifier
      * @throws ProductNotFoundException if no product exists with the given id
-     * @throws IllegalStateException    if the product is referenced by inventory records or transfer order items
+     * @throws IllegalStateException    if the product is referenced by inventory records,
+     *                                  transfer order items, or transfer order reservations
      */
     @Transactional
     public void deleteProduct(UUID id)
@@ -140,6 +146,10 @@ public class ProductService
         if (transferOrderRepository.existsItemForProduct(id))
         {
             throw new IllegalStateException("Product cannot be deleted because it is referenced by transfer order items");
+        }
+        if (reservationRepository.existsByProductId(id))
+        {
+            throw new IllegalStateException("Product cannot be deleted because it is referenced by transfer order reservations");
         }
         productRepository.delete(product);
     }

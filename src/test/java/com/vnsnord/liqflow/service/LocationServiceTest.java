@@ -10,6 +10,7 @@ import com.vnsnord.liqflow.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.LocationRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderRepository;
+import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderReservationRepository;
 import com.vnsnord.liqflow.service.mapper.LocationMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,8 @@ public class LocationServiceTest
     private InventoryRepository inventoryRepository;
     @Mock
     private TransferOrderRepository transferOrderRepository;
+    @Mock
+    private TransferOrderReservationRepository reservationRepository;
     @Mock
     private LocationResponse locationResponse;
 
@@ -180,12 +183,33 @@ public class LocationServiceTest
         when(locationRepository.findById(locationId)).thenReturn(Optional.of(location));
         when(inventoryRepository.existsByLocationId(locationId)).thenReturn(false);
         when(transferOrderRepository.existsByLocationId(locationId)).thenReturn(false);
+        when(reservationRepository.existsByLocationId(locationId)).thenReturn(false);
 
         // When
         locationService.deleteLocation(locationId);
 
         // Then
         verify(locationRepository).delete(location);
+    }
+
+    @Test
+    void deleteLocation_ShouldThrow_WhenReferencedByReservation()
+    {
+        // Given
+        Location location = createLocation();
+        UUID locationId = location.getId();
+
+        when(locationRepository.findById(locationId)).thenReturn(Optional.of(location));
+        when(inventoryRepository.existsByLocationId(locationId)).thenReturn(false);
+        when(transferOrderRepository.existsByLocationId(locationId)).thenReturn(false);
+        when(reservationRepository.existsByLocationId(locationId)).thenReturn(true);
+
+        // When & Then
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> locationService.deleteLocation(locationId));
+        assertEquals("Location cannot be deleted because it is referenced by transfer order reservations",
+                exception.getMessage());
+        verify(locationRepository, never()).delete(any());
     }
 
     @Test

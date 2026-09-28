@@ -9,6 +9,7 @@ import com.vnsnord.liqflow.exception.ProductNotFoundException;
 import com.vnsnord.liqflow.infrastructure.persistence.InventoryRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.ProductRepository;
 import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderRepository;
+import com.vnsnord.liqflow.infrastructure.persistence.TransferOrderReservationRepository;
 import com.vnsnord.liqflow.service.mapper.ProductMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,8 @@ public class ProductServiceTest
     private InventoryRepository inventoryRepository;
     @Mock
     private TransferOrderRepository transferOrderRepository;
+    @Mock
+    private TransferOrderReservationRepository reservationRepository;
     @Mock
     private ProductMapper productMapper;
 
@@ -274,12 +277,34 @@ public class ProductServiceTest
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(inventoryRepository.existsByProductId(productId)).thenReturn(false);
         when(transferOrderRepository.existsItemForProduct(productId)).thenReturn(false);
+        when(reservationRepository.existsByProductId(productId)).thenReturn(false);
 
         // When
         productService.deleteProduct(productId);
 
         // Then
         verify(productRepository).delete(product);
+    }
+
+    @Test
+    void deleteProduct_ShouldThrow_WhenReferencedByReservation()
+    {
+        // Given
+        UUID productId = UUID.randomUUID();
+        Product product = new Product("SKU-001", "Laptop", "Desc", new BigDecimal("100.00"));
+        ReflectionTestUtils.setField(product, "id", productId);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(inventoryRepository.existsByProductId(productId)).thenReturn(false);
+        when(transferOrderRepository.existsItemForProduct(productId)).thenReturn(false);
+        when(reservationRepository.existsByProductId(productId)).thenReturn(true);
+
+        // When & Then
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> productService.deleteProduct(productId));
+        assertEquals("Product cannot be deleted because it is referenced by transfer order reservations",
+                exception.getMessage());
+        verify(productRepository, never()).delete(any());
     }
 
     @Test
