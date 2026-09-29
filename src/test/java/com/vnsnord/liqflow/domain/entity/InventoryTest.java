@@ -93,6 +93,38 @@ public class InventoryTest
         Assertions.assertEquals(10, inventory.getAvailableQuantity());
     }
 
+    @Test
+    void deductStock_ShouldRejectAMountThatWouldEatIntoReservedStock()
+    {
+        Inventory inventory = new Inventory(location(), product(), 10, 0);
+        inventory.reserveStock(6);
+
+        // 10 physical units, but 6 belong to a transfer order, so only 4 are
+        // available. Deducting 5 must fail rather than quietly shrink the
+        // reservation and strand the order.
+        IllegalStateException exception = Assertions.assertThrows(IllegalStateException.class,
+                () -> inventory.deductStock(5));
+
+        Assertions.assertEquals(
+                "Cannot deduct more than the available stock; reserved units are not available",
+                exception.getMessage());
+        Assertions.assertEquals(10, inventory.getQuantity());
+        Assertions.assertEquals(6, inventory.getReservedQuantity());
+    }
+
+    @Test
+    void deductStock_ShouldRemoveAvailableStockOnly()
+    {
+        Inventory inventory = new Inventory(location(), product(), 10, 0);
+        inventory.reserveStock(6);
+
+        inventory.deductStock(4);
+
+        Assertions.assertEquals(6, inventory.getQuantity());
+        Assertions.assertEquals(6, inventory.getReservedQuantity());
+        Assertions.assertEquals(0, inventory.getAvailableQuantity());
+    }
+
     private Location location()
     {
         Location location = new Location("WH-TEST", "Test", LocationType.CENTRAL_WAREHOUSE, "Address");

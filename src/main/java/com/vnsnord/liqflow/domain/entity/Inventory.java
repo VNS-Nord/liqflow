@@ -138,14 +138,15 @@ public class Inventory
     }
 
     /**
-     * Deducts a quantity from the physical stock on hand. The deduction is
-     * taken from the unreserved stock first; if it exceeds the unreserved
-     * quantity, the reserved quantity is reduced accordingly so that the
-     * available quantity never becomes negative.
+     * Deducts a quantity from the physical stock on hand. The deduction may only
+     * come out of the available quantity, so units reserved for a pending
+     * transfer are never touched. This keeps {@code reservedQuantity} in
+     * agreement with the reservation rows that back it; an operator who needs to
+     * correct stock that is already committed must settle the order first.
      *
      * @param amount the number of units to deduct (must be &gt; 0)
      * @throws IllegalArgumentException if {@code amount} is &le; 0
-     * @throws IllegalStateException    if there is insufficient physical stock
+     * @throws IllegalStateException    if {@code amount} exceeds the available quantity
      */
     public void deductStock(int amount)
     {
@@ -153,14 +154,10 @@ public class Inventory
         {
             throw new IllegalArgumentException("Quantity to deduct must be greater than zero");
         }
-        if (this.quantity < amount)
+        if (getAvailableQuantity() < amount)
         {
-            throw new IllegalStateException("Insufficient physical stock to deduct");
-        }
-        int unreserved = getAvailableQuantity();
-        if (unreserved < amount)
-        {
-            this.reservedQuantity -= amount - unreserved;
+            throw new IllegalStateException(
+                    "Cannot deduct more than the available stock; reserved units are not available");
         }
         this.quantity -= amount;
     }

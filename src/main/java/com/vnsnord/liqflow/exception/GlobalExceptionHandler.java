@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -203,6 +204,21 @@ public class GlobalExceptionHandler
     public ResponseEntity<ErrorResponse> handlePessimisticLocking(PessimisticLockingFailureException ex, HttpServletRequest request)
     {
         return build(HttpStatus.CONFLICT, "Could not acquire the required stock locks; please retry", request, null);
+    }
+
+    /**
+     * Handles requests that match no controller mapping. Without this handler the
+     * catch-all below would report an unknown URL as a 500, which blames the
+     * server for what is really a client mistake.
+     *
+     * @param ex      the exception raised while resolving the handler
+     * @param request the current HTTP request
+     * @return a 404 response naming the path that was not found
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request)
+    {
+        return build(HttpStatus.NOT_FOUND, "No endpoint for " + request.getRequestURI(), request, null);
     }
 
     /**

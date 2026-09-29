@@ -144,32 +144,4 @@ public class InventoryController
     {
         return ResponseEntity.ok(inventoryService.deductStock(id, request.quantity()));
     }
-
-    /**
-     * Reserves stock on an inventory record.
-     *
-     * @param id      the inventory identifier
-     * @param request the quantity to reserve
-     * @return the updated record with HTTP 200
-     */
-    @PostMapping("/{id}/reserve")
-    public ResponseEntity<InventoryResponse> reserveStock(@PathVariable UUID id,
-                                                          @Valid @RequestBody StockMovementRequest request)
-    {
-        return ResponseEntity.ok(inventoryService.reserveStock(id, request.quantity()));
-    }
-
-    /**
-     * Releases previously reserved stock on an inventory record.
-     *
-     * @param id      the inventory identifier
-     * @param request the quantity to release
-     * @return the updated record with HTTP 200
-     */
-    @PostMapping("/{id}/release")
-    public ResponseEntity<InventoryResponse> releaseReservedStock(@PathVariable UUID id,
-                                                                  @Valid @RequestBody StockMovementRequest request)
-    {
-        return ResponseEntity.ok(inventoryService.releaseReservedStock(id, request.quantity()));
-    }
 }

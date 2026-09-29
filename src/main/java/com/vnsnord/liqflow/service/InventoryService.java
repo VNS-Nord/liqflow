@@ -181,38 +181,6 @@ public class InventoryService
     }
 
     /**
-     * Reserves a quantity of stock, increasing the reserved quantity.
-     *
-     * @param id       the inventory identifier
-     * @param quantity the number of units to reserve
-     * @return the response DTO of the updated record
-     * @throws InventoryNotFoundException if no record exists with the given id
-     * @throws IllegalStateException      if there is insufficient available stock
-     */
-    @Transactional
-    public InventoryResponse reserveStock(UUID id, int quantity) {
-        Inventory inventory = getInventory(id);
-        inventory.reserveStock(quantity);
-        return inventoryMapper.toResponse(inventoryRepository.save(inventory));
-    }
-
-    /**
-     * Releases previously reserved stock.
-     *
-     * @param id       the inventory identifier
-     * @param quantity the number of units to release
-     * @return the response DTO of the updated record
-     * @throws InventoryNotFoundException if no record exists with the given id
-     * @throws IllegalStateException      if more than the reserved quantity is released
-     */
-    @Transactional
-    public InventoryResponse releaseReservedStock(UUID id, int quantity) {
-        Inventory inventory = getInventory(id);
-        inventory.releaseReservedStock(quantity);
-        return inventoryMapper.toResponse(inventoryRepository.save(inventory));
-    }
-
-    /**
      * Loads an inventory record by identifier or throws when it does not exist.
      *
      * @param id the inventory identifier

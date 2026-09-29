@@ -194,26 +194,35 @@ public class InventoryControllerTest
     }
 
     @Test
-    void reserveStock_ShouldReturn200AndUpdatedReservedQuantity() throws Exception
+    void reserveEndpoint_ShouldNotExist() throws Exception
     {
-        // Given
-        UUID id = UUID.randomUUID();
-        InventoryResponse response = new InventoryResponse(
-                id, UUID.randomUUID(), "WH-MAIN", UUID.randomUUID(), "SKU-001", "Laptop", 10, 4, 6, 2);
-
-        Mockito.when(inventoryService.reserveStock(eq(id), eq(4))).thenReturn(response);
-
-        // When & Then
-        mockMvc.perform(post("/api/v1/inventories/{id}/reserve", id)
+        // Reservations are only created by submitting a transfer order, so that
+        // reservedQuantity always has a matching reservation row. There is no
+        // way to reserve stock without one.
+        mockMvc.perform(post("/api/v1/inventories/{id}/reserve", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                     "quantity": 4
                                 }
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reservedQuantity").value(4))
-                .andExpect(jsonPath("$.availableQuantity").value(6));
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void releaseEndpoint_ShouldNotExist() throws Exception
+    {
+        // A held reservation can only be settled by completing or cancelling its
+        // transfer order. Releasing reservedQuantity directly would let a
+        // submitted order fail at completion.
+        mockMvc.perform(post("/api/v1/inventories/{id}/release", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "quantity": 4
+                                }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test

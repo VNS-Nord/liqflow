@@ -21,7 +21,7 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 - Create, list, update, and delete products.
 - Create, list, update, and delete locations.
 - Track physical, reserved, available, and low-threshold quantities for each product at each location.
-- Add, deduct, reserve, and release stock.
+- Add or deduct physical stock.
 - Find inventory by location or by product and location.
 - Find inventory whose available quantity is at or below its configured minimum.
 - Create transfer orders and add or remove items while an order is a draft.
@@ -151,10 +151,10 @@ Location types are `CENTRAL_WAREHOUSE`, `REGIONAL_HUB`, and `STORE`.
 | `GET` | `/inventories/{id}` | Get an inventory record by ID |
 | `POST` | `/inventories/{id}/add-stock` | Add physical stock |
 | `POST` | `/inventories/{id}/deduct-stock` | Deduct physical stock |
-| `POST` | `/inventories/{id}/reserve` | Increase reserved stock |
-| `POST` | `/inventories/{id}/release` | Decrease reserved stock |
 
 Inventory supports create and read operations plus explicit stock operations. There are currently no inventory update or delete endpoints.
+
+There is deliberately no endpoint to reserve or release stock directly. `reservedQuantity` changes only as a side effect of a transfer order's lifecycle, so it always matches the sum of the `HELD` rows in `transfer_order_reservations`. Allowing it to be edited on its own would let a caller reduce the reserved quantity below what a submitted order has already claimed, and that order would then fail when it reached `IN_TRANSIT`.
 
 ### Transfer orders
 
@@ -271,7 +271,7 @@ The required inventory invariant is `0 <= reservedQuantity <= quantity`; non-neg
 
 Stock can be added, deducted, reserved, released, or consumed through explicit operations.
 
-`deductStock` is the generic deduction. It rejects an amount greater than the physical quantity and, when the amount exceeds the currently unreserved quantity, also reduces `reservedQuantity`.
+`deductStock` removes physical stock for corrections such as shrinkage or a stock-take. It can only take from the available quantity, so it can never reduce a reservation that a pending order is relying on.
 
 `consumeReservedStock` is the transfer-specific path. It rejects an amount greater than the reserved quantity and only ever removes units that are already reserved, so it cannot reach into stock held on behalf of another order.
 
@@ -315,9 +315,11 @@ stateDiagram-v2
 - Cancelling a transfer releases any reservation still held, returning the units to the available quantity.
 - A reservation settles exactly once, and terminal reservations are kept as history.
 
+Because `reservedQuantity` is only ever changed alongside a reservation row, the two stay in agreement: the reserved quantity on any inventory record equals the sum of its `HELD` reservations. That is what makes a submitted order safe to promise, since no other operation can take the units back out from under it.
+
 This is why submission validates stock rather than only completion: once a unit is reserved for one order, no other transfer can take it, so concurrent orders compete for stock at the moment of submission instead of racing at completion.
 
-The reservation is not absolute, though. The generic `deductStock` operation can still reduce `reservedQuantity` when it removes more than the unreserved quantity, which will make the affected order fail at completion. A stricter design would have `deductStock` respect outstanding reservations as well; that is not implemented.
+Stock corrections cannot undermine this either. `deductStock` refuses to remove units that are reserved, so a shrinkage write-off can never strand a submitted order. If stock genuinely has to be written off and only reserved units remain, the affected order must be cancelled first, which releases the reservation and makes the units available again.
 
 ## Tests
 

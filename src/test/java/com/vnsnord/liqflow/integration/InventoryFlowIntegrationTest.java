@@ -107,7 +107,7 @@ public class InventoryFlowIntegrationTest
     }
 
     @Test
-    void deductStock_ShouldNeverDriveAvailableQuantityBelowZero()
+    void deductStock_ShouldNotConsumeReservedUnitsInTheRealDatabase()
     {
         // Given
         UUID productId = createProduct("IT-" + UUID.randomUUID().toString().substring(0, 8));
@@ -125,17 +125,17 @@ public class InventoryFlowIntegrationTest
         Inventory withReservation = inventoryRepository.findByProductIdAndLocationId(productId, locationId)
                 .orElseThrow();
 
-        // When: try to deduct 8 units, more than the 6 available units.
-        withReservation.deductStock(8);
-        inventoryRepository.saveAndFlush(withReservation);
+        // When: try to deduct 8 units. There are 10 physical units, so the old
+        // implementation happily took the 4 reserved ones too. A correction must
+        // not be able to strand a reservation, so this now fails instead.
+        Assertions.assertThrows(IllegalStateException.class, () -> withReservation.deductStock(8));
 
-        // Then: available quantity must never drop below zero.
+        // Then: the reservation and the physical stock are both untouched.
         Inventory reloaded = inventoryRepository.findByProductIdAndLocationId(productId, locationId)
                 .orElseThrow();
-        Assertions.assertEquals(2, reloaded.getQuantity());
-        Assertions.assertEquals(2, reloaded.getReservedQuantity());
-        Assertions.assertEquals(0, reloaded.getAvailableQuantity());
-        Assertions.assertTrue(reloaded.getAvailableQuantity() >= 0);
+        Assertions.assertEquals(10, reloaded.getQuantity());
+        Assertions.assertEquals(4, reloaded.getReservedQuantity());
+        Assertions.assertEquals(6, reloaded.getAvailableQuantity());
     }
 
     @Test

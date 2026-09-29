@@ -386,56 +386,6 @@ class InventoryServiceTest
         Mockito.verify(inventoryRepository).save(inventory);
     }
 
-    @Test
-    void reserveStock_ShouldIncreaseReservedQuantityAndReturnResponse()
-    {
-        // Given
-        UUID inventoryId = UUID.randomUUID();
-        Product product = createProduct(UUID.randomUUID());
-        Location location = createLocation(UUID.randomUUID());
-        Inventory inventory = createInventory(inventoryId, location, product, 10, 0, 2);
-
-        InventoryResponse expectedResponse = new InventoryResponse(
-                inventoryId, location.getId(), "WH-MAIN", product.getId(), "SKU-001", "Laptop", 10, 4, 6, 2);
-
-        Mockito.when(inventoryRepository.findById(inventoryId)).thenReturn(Optional.of(inventory));
-        Mockito.when(inventoryRepository.save(inventory)).thenReturn(inventory);
-        Mockito.when(inventoryMapper.toResponse(inventory)).thenReturn(expectedResponse);
-
-        // When
-        InventoryResponse result = inventoryService.reserveStock(inventoryId, 4);
-
-        // Then
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(4, inventory.getReservedQuantity());
-        Mockito.verify(inventoryRepository).save(inventory);
-    }
-
-    @Test
-    void releaseReservedStock_ShouldDecreaseReservedQuantityAndReturnResponse()
-    {
-        // Given
-        UUID inventoryId = UUID.randomUUID();
-        Product product = createProduct(UUID.randomUUID());
-        Location location = createLocation(UUID.randomUUID());
-        Inventory inventory = createInventory(inventoryId, location, product, 10, 2, 2);
-
-        InventoryResponse expectedResponse = new InventoryResponse(
-                inventoryId, location.getId(), "WH-MAIN", product.getId(), "SKU-001", "Laptop", 10, 1, 9, 2);
-
-        Mockito.when(inventoryRepository.findById(inventoryId)).thenReturn(Optional.of(inventory));
-        Mockito.when(inventoryRepository.save(inventory)).thenReturn(inventory);
-        Mockito.when(inventoryMapper.toResponse(inventory)).thenReturn(expectedResponse);
-
-        // When
-        InventoryResponse result = inventoryService.releaseReservedStock(inventoryId, 1);
-
-        // Then
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(1, inventory.getReservedQuantity());
-        Mockito.verify(inventoryRepository).save(inventory);
-    }
-
     private Product createProduct(UUID id)
     {
         Product product = new Product("SKU-001", "Laptop", "Description", new BigDecimal("100.00"));
