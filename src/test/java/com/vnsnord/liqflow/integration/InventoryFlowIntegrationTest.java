@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.*;
 
 /**
  * Integration tests that exercise the real persistence layer and the stock
@@ -44,6 +45,7 @@ import java.util.UUID;
 @SpringBootTest
 public class InventoryFlowIntegrationTest
 {
+    private static final int CONCURRENT_ROUNDS = 20;
     private final List<UUID> productIds = new ArrayList<>();
     private final List<UUID> locationIds = new ArrayList<>();
     private final List<UUID> inventoryIds = new ArrayList<>();
@@ -267,6 +269,75 @@ public class InventoryFlowIntegrationTest
 
         // When & Then
         Assertions.assertThrows(IllegalStateException.class, () -> transferOrderService.submit(orderId));
+    }
+
+    @Test
+    void concurrentTransfersInOppositeDirections_ShouldNotDeadlock() throws Exception
+    {
+        UUID productId = createProduct("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID locationA = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        UUID locationB = createLocation("IT-" + UUID.randomUUID().toString().substring(0, 8));
+        int initialQuantity = 1000;
+        createInventory(locationA, productId, initialQuantity, 0);
+        createInventory(locationB, productId, initialQuantity, 0);
+
+        // The two orders move different amounts, so the final quantities depend on
+        // both movements having been applied rather than cancelling each other out.
+        int aToBQuantity = 10;
+        int bToAQuantity = 25;
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try
+        {
+            for (int round = 0; round < CONCURRENT_ROUNDS; round++)
+            {
+                UUID aToB = createTransferOrder(
+                        "IT-AB-" + UUID.randomUUID().toString().substring(0, 8), locationA, locationB);
+                UUID bToA = createTransferOrder(
+                        "IT-BA-" + UUID.randomUUID().toString().substring(0, 8), locationB, locationA);
+
+                transferOrderService.addItem(aToB, new TransferOrderItemRequest(productId, aToBQuantity));
+                transferOrderService.addItem(bToA, new TransferOrderItemRequest(productId, bToAQuantity));
+                transferOrderService.submit(aToB);
+                transferOrderService.submit(bToA);
+                transferOrderService.markInTransit(aToB);
+                transferOrderService.markInTransit(bToA);
+
+                CountDownLatch startTogether = new CountDownLatch(1);
+                Future<TransferOrderResponse> aToBCompletion = executor.submit(() ->
+                {
+                    startTogether.await();
+                    return transferOrderService.complete(aToB);
+                });
+                Future<TransferOrderResponse> bToACompletion = executor.submit(() ->
+                {
+                    startTogether.await();
+                    return transferOrderService.complete(bToA);
+                });
+                startTogether.countDown();
+                Assertions.assertEquals(TransferOrderStatus.COMPLETED,
+                        aToBCompletion.get(15, TimeUnit.SECONDS).status(),
+                        "round " + round + ": the A-to-B transfer did not complete");
+                Assertions.assertEquals(TransferOrderStatus.COMPLETED,
+                        bToACompletion.get(15, TimeUnit.SECONDS).status(),
+                        "round " + round + ": the B-to-A transfer did not complete");
+            }
+        } finally
+        {
+            executor.shutdownNow();
+        }
+
+        Inventory locationAInventory = inventoryRepository
+                .findByProductIdAndLocationId(productId, locationA)
+                .orElseThrow();
+        Inventory locationBInventory = inventoryRepository
+                .findByProductIdAndLocationId(productId, locationB)
+                .orElseThrow();
+
+        Assertions.assertEquals(0, locationAInventory.getReservedQuantity());
+        Assertions.assertEquals(0, locationBInventory.getReservedQuantity());
+        Assertions.assertEquals(2 * initialQuantity,
+                locationAInventory.getQuantity() + locationBInventory.getQuantity());
     }
 
     private UUID createProduct(String sku)

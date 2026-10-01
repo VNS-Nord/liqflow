@@ -336,6 +336,7 @@ The test suite uses:
 - Focused tests for centralized exception handling.
 - [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the configured PostgreSQL database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
 - Integration coverage for the reservation rules: two orders competing for the same stock, cancellation returning a hold to available quantity, and an order completing without consuming another order's reservation.
+- A concurrency test that completes two transfers in opposite directions simultaneously, on two real connections, and asserts both commits succeed. Removing the deterministic lock order makes this test fail on the first round with a PostgreSQL `deadlock detected`, so the claim is guarded rather than asserted.
 
 The full suite requires the PostgreSQL instance described in [Running locally](#running-locally).
 
