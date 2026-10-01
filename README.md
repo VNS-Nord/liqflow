@@ -111,6 +111,8 @@ The API is then available under `http://localhost:8080/api/v1`.
 
 The `dev` profile is the default. It enables SQL logging and Hikari connection-leak detection. Flyway creates the schema and loads demo data into a fresh database.
 
+The application only ever talks to `liqflow`. Tests use a separate database, see [Tests](#tests).
+
 ## API overview
 
 All endpoints use the `/api/v1` prefix.
@@ -323,6 +325,20 @@ Stock corrections cannot undermine this either. `deductStock` refuses to remove 
 
 ## Tests
 
+Tests run against a dedicated `liqflow_test` database so they never touch your development data. Create it once:
+
+```sh
+docker exec liqflow-postgres psql -U postgres -c "CREATE DATABASE liqflow_test"
+```
+
+Or, if PostgreSQL runs natively on your machine:
+
+```sql
+CREATE DATABASE liqflow_test;
+```
+
+Flyway migrates `liqflow_test` automatically on the first test run, so no manual migration step is needed. The connection is configured in [`src/test/resources/application.yaml`](src/test/resources/application.yaml) and can be overridden with `TEST_DB_URL`, `TEST_DB_USERNAME`, and `TEST_DB_PASSWORD` (falling back to `DB_USERNAME`/`DB_PASSWORD`). That file shadows the main `application.yaml` on the test classpath, so it is self-contained.
+
 Run the full suite with:
 
 ```sh
@@ -334,11 +350,13 @@ The test suite uses:
 - Mockito unit tests for service behavior.
 - MockMvc tests for controller routing, validation, serialization, and status codes.
 - Focused tests for centralized exception handling.
-- [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the configured PostgreSQL database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
+- [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the `liqflow_test` database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
 - Integration coverage for the reservation rules: two orders competing for the same stock, cancellation returning a hold to available quantity, and an order completing without consuming another order's reservation.
 - A concurrency test that completes two transfers in opposite directions simultaneously, on two real connections, and asserts both commits succeed. Removing the deterministic lock order makes this test fail on the first round with a PostgreSQL `deadlock detected`, so the claim is guarded rather than asserted.
 
-The full suite requires the PostgreSQL instance described in [Running locally](#running-locally).
+The full suite requires the PostgreSQL instance described in [Running locally](#running-locally), plus the `liqflow_test` database. Tests fail rather than skip when either is missing.
+
+To reset the test database to a clean state, drop and recreate it, then run the suite once to re-apply migrations.
 
 ## License
 

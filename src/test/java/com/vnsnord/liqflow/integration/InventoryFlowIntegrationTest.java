@@ -38,8 +38,9 @@ import java.util.concurrent.*;
  * becomes a hard failure instead of passing inside a rollback-only test
  * transaction.</p>
  *
- * <p>The tests require the database configured in {@code application.yaml}
- * (the local {@code postgres} container) and clean up all records they
+ * <p>The tests require the database configured in
+ * {@code src/test/resources/application.yaml} (the separate {@code liqflow_test}
+ * database, so development data is never touched) and clean up all records they
  * create.</p>
  */
 @SpringBootTest
