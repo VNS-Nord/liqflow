@@ -1,0 +1,55 @@
+### 1. Get all products
+GET {{host}}/products
+Accept: application/json
+###
+
+### 2. Get product by id
+GET {{host}}/products/a1111111-1111-1111-1111-111111111111
+Accept: application/json
+###
+
+### 3. Create transfer order
+POST {{host}}/transfer-orders
+Content-Type: application/json
+
+{
+    "orderNumber": "VNS_004",
+    "sourceLocationId": "22222222-2222-2222-2222-222222222222",
+    "targetLocationId": "11111111-1111-1111-1111-111111111111"
+}
+###
+
+### 4. Add items to order
+POST {{host}}/transfer-orders/a00fd13e-7702-4fbf-9a13-cd4736e3e935/items
+Content-Type: application/json
+
+{
+    "productId" : "a2222222-2222-2222-2222-222222222222",
+    "quantity": 160
+}
+###
+
+### 5. Submit order
+POST {{host}}/transfer-orders/a00fd13e-7702-4fbf-9a13-cd4736e3e935/submit
+Accept: application/json
+###
+
+### 6. Cancel order
+POST {{host}}/transfer-orders/a00fd13e-7702-4fbf-9a13-cd4736e3e935/cancel
+Accept: application/json
+###
+
+### 7. Mark order in-transit
+POST {{host}}/transfer-orders/a00fd13e-7702-4fbf-9a13-cd4736e3e935/in-transit
+Accept: application/json
+###
+
+### 7. Mark order complete
+POST {{host}}/transfer-orders/a00fd13e-7702-4fbf-9a13-cd4736e3e935/complete
+Accept: application/json
+###
+
+### 8. Get inventory by location
+GET {{host}}/inventories/location/22222222-2222-2222-2222-222222222222
+Accept: application/json
+###
