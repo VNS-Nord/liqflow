@@ -10,12 +10,13 @@ import jakarta.validation.constraints.Size;
  * this payload.</p>
  *
  * @param name    the new display name of the location (must not be blank, max 100 characters)
- * @param address the new address, or null/blank to clear it
+ * @param address the new address, or null/blank to clear it (max 255 characters)
  */
 public record UpdateLocationRequest(@NotBlank(message = "Location name mandatory")
                                     @Size(max = 100, message = "Name cannot exceed 100 characters")
                                     String name,
 
+                                    @Size(max = 255, message = "Address cannot exceed 255 characters")
                                     String address)
 {
 }

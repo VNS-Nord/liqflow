@@ -40,7 +40,7 @@ public class Location
     @Column(nullable = false, length = 30)
     private LocationType type;
 
-    @Column(length = 500)
+    @Column(length = 255)
     private String address;
 
     protected Location()

@@ -153,8 +153,11 @@ Location types are `CENTRAL_WAREHOUSE`, `REGIONAL_HUB`, and `STORE`.
 | `GET` | `/inventories/{id}` | Get an inventory record by ID |
 | `POST` | `/inventories/{id}/add-stock` | Add physical stock |
 | `POST` | `/inventories/{id}/deduct-stock` | Deduct physical stock |
+| `PUT` | `/inventories/{id}/min-threshold` | Change the low-stock threshold |
 
-Inventory supports create and read operations plus explicit stock operations. There are currently no inventory update or delete endpoints.
+Inventory supports create and read operations plus explicit stock operations. There is no inventory delete endpoint, and the only field that can be edited directly is the low-stock threshold.
+
+`minThreshold` is editable because it is a configuration value, independent of how much stock happens to be on hand, so retuning it can never put the quantity out of step with the reservations held against it. The physical quantity is deliberately not editable: it may only move through `add-stock`, `deduct-stock`, and transfer orders.
 
 There is deliberately no endpoint to reserve or release stock directly. `reservedQuantity` changes only as a side effect of a transfer order's lifecycle, so it always matches the sum of the `HELD` rows in `transfer_order_reservations`. Allowing it to be edited on its own would let a caller reduce the reserved quantity below what a submitted order has already claimed, and that order would then fail when it reached `IN_TRANSIT`.
 

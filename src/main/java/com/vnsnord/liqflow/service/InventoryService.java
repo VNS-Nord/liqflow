@@ -4,6 +4,7 @@ import com.vnsnord.liqflow.domain.entity.Inventory;
 import com.vnsnord.liqflow.domain.entity.Location;
 import com.vnsnord.liqflow.domain.entity.Product;
 import com.vnsnord.liqflow.dto.request.CreateInventoryRequest;
+import com.vnsnord.liqflow.dto.request.UpdateInventoryRequest;
 import com.vnsnord.liqflow.dto.response.InventoryResponse;
 import com.vnsnord.liqflow.exception.ConflictException;
 import com.vnsnord.liqflow.exception.InventoryNotFoundException;
@@ -146,6 +147,25 @@ public class InventoryService
                 request.initialStock(),
                 request.minThreshold()
         );
+        return inventoryMapper.toResponse(inventoryRepository.save(inventory));
+    }
+
+    /**
+     * Changes an inventory record's low-stock threshold.
+     *
+     * <p>The physical quantity is not editable here on purpose: it may only move
+     * through {@link #addStock(UUID, int)} and {@link #deductStock(UUID, int)}
+     * so that the quantity and the reservations backing it cannot drift apart.</p>
+     *
+     * @param id      the inventory identifier
+     * @param request the new threshold
+     * @return the response DTO of the updated record
+     * @throws InventoryNotFoundException if no record exists with the given id
+     */
+    @Transactional
+    public InventoryResponse updateMinThreshold(UUID id, UpdateInventoryRequest request) {
+        Inventory inventory = getInventory(id);
+        inventory.updateMinThreshold(request.minThreshold());
         return inventoryMapper.toResponse(inventoryRepository.save(inventory));
     }
 

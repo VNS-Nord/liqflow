@@ -125,6 +125,43 @@ public class InventoryTest
         Assertions.assertEquals(0, inventory.getAvailableQuantity());
     }
 
+    @Test
+    void updateMinThreshold_ShouldChangeTheThresholdWithoutTouchingQuantity()
+    {
+        Inventory inventory = new Inventory(location(), product(), 10, 2);
+        inventory.reserveStock(4);
+
+        inventory.updateMinThreshold(7);
+
+        Assertions.assertEquals(7, inventory.getMinThreshold());
+        Assertions.assertEquals(10, inventory.getQuantity());
+        Assertions.assertEquals(4, inventory.getReservedQuantity());
+    }
+
+    @Test
+    void updateMinThreshold_ShouldRejectNegativeThresholds()
+    {
+        Inventory inventory = new Inventory(location(), product(), 10, 2);
+
+        IllegalArgumentException exception = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> inventory.updateMinThreshold(-1));
+
+        Assertions.assertEquals("Minimum threshold cannot be negative", exception.getMessage());
+        Assertions.assertEquals(2, inventory.getMinThreshold());
+    }
+
+    @Test
+    void updateMinThreshold_ShouldAllowAThresholdAboveTheAvailableQuantity()
+    {
+        // Retuning the threshold so that the record reports as low stock is a
+        // legitimate configuration, not an error.
+        Inventory inventory = new Inventory(location(), product(), 10, 0);
+
+        inventory.updateMinThreshold(50);
+
+        Assertions.assertTrue(inventory.isBelowThreshold());
+    }
+
     private Location location()
     {
         Location location = new Location("WH-TEST", "Test", LocationType.CENTRAL_WAREHOUSE, "Address");

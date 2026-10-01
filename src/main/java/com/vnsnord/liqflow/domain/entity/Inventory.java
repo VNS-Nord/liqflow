@@ -211,6 +211,26 @@ public class Inventory
     }
 
     /**
+     * Changes the low-stock threshold.
+     *
+     * <p>The threshold is independent of the quantity on hand, so it can be
+     * retuned at any time without touching stock. A threshold above the current
+     * available quantity simply makes the record report as low stock, which is
+     * a legitimate configuration rather than an error.</p>
+     *
+     * @param minThreshold the new minimum quantity threshold (must be &ge; 0)
+     * @throws IllegalArgumentException if {@code minThreshold} is negative
+     */
+    public void updateMinThreshold(int minThreshold)
+    {
+        if (minThreshold < 0)
+        {
+            throw new IllegalArgumentException("Minimum threshold cannot be negative");
+        }
+        this.minThreshold = minThreshold;
+    }
+
+    /**
      * Indicates whether the available quantity is at or below the minimum threshold.
      *
      * @return true if the available quantity equals or falls below the minimum threshold, false otherwise

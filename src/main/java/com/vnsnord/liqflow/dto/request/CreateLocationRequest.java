@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Size;
  *                (must not be blank, max 30 characters)
  * @param name    the display name of the location (must not be blank, max 100 characters)
  * @param type    the type of the location (must not be null)
- * @param address an optional address, or null
+ * @param address an optional address, or null (max 255 characters)
  */
 public record CreateLocationRequest(@NotBlank(message = "Location code mandatory")
                                     @Size(max = 30, message = "Code cannot exceed 30 characters")
@@ -25,6 +25,7 @@ public record CreateLocationRequest(@NotBlank(message = "Location code mandatory
                                     @NotNull(message = "Location type mandatory")
                                     LocationType type,
 
+                                    @Size(max = 255, message = "Address cannot exceed 255 characters")
                                     String address)
 {
 }

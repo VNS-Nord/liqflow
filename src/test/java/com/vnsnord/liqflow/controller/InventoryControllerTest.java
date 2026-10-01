@@ -1,6 +1,7 @@
 package com.vnsnord.liqflow.controller;
 
 import com.vnsnord.liqflow.dto.request.CreateInventoryRequest;
+import com.vnsnord.liqflow.dto.request.UpdateInventoryRequest;
 import com.vnsnord.liqflow.dto.response.InventoryResponse;
 import com.vnsnord.liqflow.exception.InventoryNotFoundException;
 import com.vnsnord.liqflow.service.InventoryService;
@@ -21,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -240,5 +242,136 @@ public class InventoryControllerTest
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createInventory_ShouldReturn400_WhenInitialStockIsOmitted() throws Exception
+    {
+        // Regression test: initialStock and minThreshold used to be primitive
+        // ints, so an omitted field bound to 0 and passed validation, silently
+        // creating a zero-stock record instead of reporting a bad request.
+        mockMvc.perform(post("/api/v1/inventories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "locationId": "%s",
+                                    "productId": "%s",
+                                    "minThreshold": 2
+                                }
+                                """.formatted(UUID.randomUUID(), UUID.randomUUID())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createInventory_ShouldReturn400_WhenMinThresholdIsOmitted() throws Exception
+    {
+        mockMvc.perform(post("/api/v1/inventories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "locationId": "%s",
+                                    "productId": "%s",
+                                    "initialStock": 10
+                                }
+                                """.formatted(UUID.randomUUID(), UUID.randomUUID())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createInventory_ShouldNotReachTheService_WhenAQuantityFieldIsOmitted() throws Exception
+    {
+        // The 400 above must come from validation, not from the service layer.
+        mockMvc.perform(post("/api/v1/inventories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "locationId": "%s",
+                                    "productId": "%s"
+                                }
+                                """.formatted(UUID.randomUUID(), UUID.randomUUID())))
+                .andExpect(status().isBadRequest());
+
+        Mockito.verify(inventoryService, Mockito.never())
+                .createInventory(any(CreateInventoryRequest.class));
+    }
+
+    @Test
+    void updateMinThreshold_ShouldReturn200AndUpdatedThreshold() throws Exception
+    {
+        // Given
+        UUID id = UUID.randomUUID();
+        InventoryResponse response = new InventoryResponse(
+                id, UUID.randomUUID(), "WH-MAIN", UUID.randomUUID(), "SKU-001", "Laptop", 10, 0, 10, 7);
+
+        Mockito.when(inventoryService.updateMinThreshold(eq(id), any(UpdateInventoryRequest.class)))
+                .thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(put("/api/v1/inventories/{id}/min-threshold", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "minThreshold": 7
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minThreshold").value(7));
+    }
+
+    @Test
+    void updateMinThreshold_ShouldReturn400_WhenThresholdIsNegative() throws Exception
+    {
+        mockMvc.perform(put("/api/v1/inventories/{id}/min-threshold", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "minThreshold": -1
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateMinThreshold_ShouldReturn400_WhenThresholdIsOmitted() throws Exception
+    {
+        mockMvc.perform(put("/api/v1/inventories/{id}/min-threshold", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateMinThreshold_ShouldReturn404_WhenNotFound() throws Exception
+    {
+        // Given
+        UUID id = UUID.randomUUID();
+        Mockito.when(inventoryService.updateMinThreshold(eq(id), any(UpdateInventoryRequest.class)))
+                .thenThrow(new InventoryNotFoundException("id", id));
+
+        // When & Then
+        mockMvc.perform(put("/api/v1/inventories/{id}/min-threshold", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "minThreshold": 7
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void quantityShouldNotBeDirectlyEditable() throws Exception
+    {
+        // The physical quantity may only move through add-stock, deduct-stock
+        // and transfer orders. A direct write would let the quantity drift out
+        // of agreement with the reservations held against it.
+        mockMvc.perform(put("/api/v1/inventories/{id}", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "quantity": 999
+                                }
+                                """))
+                .andExpect(status().isMethodNotAllowed());
     }
 }

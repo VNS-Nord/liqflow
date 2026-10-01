@@ -3,6 +3,7 @@ package com.vnsnord.liqflow.controller;
 import com.vnsnord.liqflow.dto.request.CreateInventoryRequest;
 import com.vnsnord.liqflow.dto.response.InventoryResponse;
 import com.vnsnord.liqflow.dto.request.StockMovementRequest;
+import com.vnsnord.liqflow.dto.request.UpdateInventoryRequest;
 import com.vnsnord.liqflow.service.InventoryService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -115,6 +116,27 @@ public class InventoryController
                 .buildAndExpand(response.id())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    /**
+     * Changes an inventory record's low-stock threshold.
+     *
+     * <p>This is the only mutable field on an inventory record that is edited
+     * directly. The physical quantity is intentionally not editable here; it
+     * moves through {@code add-stock}, {@code deduct-stock} and transfer orders
+     * so that it cannot drift out of agreement with the reservations held
+     * against it.</p>
+     *
+     * @param id      the inventory identifier
+     * @param request the new threshold
+     * @return the updated record with HTTP 200
+     */
+    @PutMapping("/{id}/min-threshold")
+    public ResponseEntity<InventoryResponse> updateMinThreshold(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateInventoryRequest request)
+    {
+        return ResponseEntity.ok(inventoryService.updateMinThreshold(id, request));
     }
 
     /**

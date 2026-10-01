@@ -5,12 +5,15 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +23,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Central exception handler that converts exceptions thrown by controllers
@@ -219,6 +223,48 @@ public class GlobalExceptionHandler
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request)
     {
         return build(HttpStatus.NOT_FOUND, "No endpoint for " + request.getRequestURI(), request, null);
+    }
+
+    /**
+     * Handles a request whose path exists but not for the method that was used.
+     *
+     * <p>Without this handler the {@link Exception} fallback below reports a
+     * wrong method as a 500, which reads as a server fault when it is really a
+     * client mistake.</p>
+     *
+     * @param ex      the unsupported method exception
+     * @param request the current HTTP request
+     * @return a 405 response naming the path and listing the methods it supports
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex,
+                                                                  HttpServletRequest request)
+    {
+        String supported = ex.getSupportedHttpMethods() == null
+                ? ""
+                : " Allowed methods: " + ex.getSupportedHttpMethods().stream()
+                        .map(HttpMethod::name)
+                        .collect(Collectors.joining(", "));
+
+        return build(HttpStatus.METHOD_NOT_ALLOWED,
+                "Method " + ex.getMethod() + " is not supported for " + request.getRequestURI() + "." + supported,
+                request, null);
+    }
+
+    /**
+     * Handles a request whose body declares a media type the endpoint cannot read.
+     *
+     * @param ex      the unsupported media type exception
+     * @param request the current HTTP request
+     * @return a 415 response naming the unsupported content type
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex,
+                                                                     HttpServletRequest request)
+    {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Content type " + ex.getContentType() + " is not supported for " + request.getRequestURI(),
+                request, null);
     }
 
     /**
