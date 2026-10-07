@@ -16,7 +16,8 @@ public class TransferOrderMapper
      * @param entity the transfer order entity
      * @return the summary response DTO
      */
-    public TransferOrderResponse toResponse(TransferOrder entity) {
+    public TransferOrderResponse toResponse(TransferOrder entity)
+    {
         Location source = entity.getSourceLocation();
         Location target = entity.getTargetLocation();
 
@@ -39,7 +40,8 @@ public class TransferOrderMapper
      * @param entity the transfer order entity
      * @return the detailed response DTO
      */
-    public TransferOrderDetailResponse toDetailResponse(TransferOrder entity) {
+    public TransferOrderDetailResponse toDetailResponse(TransferOrder entity)
+    {
         Location source = entity.getSourceLocation();
         Location target = entity.getTargetLocation();
 
@@ -63,7 +65,8 @@ public class TransferOrderMapper
      * @param item the transfer order item
      * @return the response DTO
      */
-    public TransferOrderItemResponse toItemResponse(TransferOrderItem item) {
+    public TransferOrderItemResponse toItemResponse(TransferOrderItem item)
+    {
         Product product = item.getProduct();
         return new TransferOrderItemResponse(
                 item.getId(),

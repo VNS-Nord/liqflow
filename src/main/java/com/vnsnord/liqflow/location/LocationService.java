@@ -28,11 +28,11 @@ public class LocationService
     /**
      * Creates a new location service with the given dependencies.
      *
-     * @param locationRepository     the location repository
-     * @param inventoryRepository    the inventory repository
+     * @param locationRepository      the location repository
+     * @param inventoryRepository     the inventory repository
      * @param transferOrderRepository the transfer order repository
-     * @param reservationRepository  the transfer order reservation repository
-     * @param locationMapper         the location mapper
+     * @param reservationRepository   the transfer order reservation repository
+     * @param locationMapper          the location mapper
      */
     public LocationService(LocationRepository locationRepository,
                            InventoryRepository inventoryRepository,

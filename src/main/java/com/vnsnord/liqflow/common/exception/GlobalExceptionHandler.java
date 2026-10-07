@@ -243,8 +243,8 @@ public class GlobalExceptionHandler
         String supported = ex.getSupportedHttpMethods() == null
                 ? ""
                 : " Allowed methods: " + ex.getSupportedHttpMethods().stream()
-                        .map(HttpMethod::name)
-                        .collect(Collectors.joining(", "));
+                .map(HttpMethod::name)
+                .collect(Collectors.joining(", "));
 
         return build(HttpStatus.METHOD_NOT_ALLOWED,
                 "Method " + ex.getMethod() + " is not supported for " + request.getRequestURI() + "." + supported,

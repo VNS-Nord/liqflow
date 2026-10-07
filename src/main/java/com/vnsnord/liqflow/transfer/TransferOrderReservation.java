@@ -1,8 +1,8 @@
 package com.vnsnord.liqflow.transfer;
 
-import com.vnsnord.liqflow.product.Product;
 import com.vnsnord.liqflow.inventory.Inventory;
 import com.vnsnord.liqflow.location.Location;
+import com.vnsnord.liqflow.product.Product;
 import jakarta.persistence.*;
 
 import java.time.Instant;

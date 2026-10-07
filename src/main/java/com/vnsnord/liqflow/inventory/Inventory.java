@@ -64,10 +64,10 @@ public class Inventory
     /**
      * Creates a new inventory record for the given location, product and initial stock.
      *
-     * @param location      the location where the stock is held (must not be null)
-     * @param product       the product being stocked (must not be null)
-     * @param initialStock  the initial physical quantity on hand (must be &ge; 0)
-     * @param minThreshold  the minimum quantity threshold (must be &ge; 0)
+     * @param location     the location where the stock is held (must not be null)
+     * @param product      the product being stocked (must not be null)
+     * @param initialStock the initial physical quantity on hand (must be &ge; 0)
+     * @param minThreshold the minimum quantity threshold (must be &ge; 0)
      * @throws IllegalArgumentException if {@code initialStock} or {@code minThreshold} is negative
      * @throws NullPointerException     if {@code location} or {@code product} is null
      */
@@ -81,8 +81,8 @@ public class Inventory
         {
             throw new IllegalArgumentException("Minimum threshold cannot be negative");
         }
-        this.location = Objects.requireNonNull(location,  "Location cannot be null");
-        this.product = Objects.requireNonNull(product,  "Product cannot be null");
+        this.location = Objects.requireNonNull(location, "Location cannot be null");
+        this.product = Objects.requireNonNull(product, "Product cannot be null");
         this.quantity = initialStock;
         this.minThreshold = minThreshold;
         this.reservedQuantity = 0;
@@ -205,8 +205,7 @@ public class Inventory
         try
         {
             this.quantity = Math.addExact(this.quantity, amount);
-        }
-        catch (ArithmeticException exception)
+        } catch (ArithmeticException exception)
         {
             throw new IllegalArgumentException("Quantity would exceed the maximum supported value", exception);
         }

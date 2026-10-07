@@ -1,12 +1,12 @@
 package com.vnsnord.liqflow.inventory;
 
-import com.vnsnord.liqflow.location.Location;
-import com.vnsnord.liqflow.product.Product;
 import com.vnsnord.liqflow.common.exception.ConflictException;
 import com.vnsnord.liqflow.common.exception.InventoryNotFoundException;
 import com.vnsnord.liqflow.common.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.common.exception.ProductNotFoundException;
+import com.vnsnord.liqflow.location.Location;
 import com.vnsnord.liqflow.location.LocationRepository;
+import com.vnsnord.liqflow.product.Product;
 import com.vnsnord.liqflow.product.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,7 +54,8 @@ public class InventoryService
      * @return the corresponding response DTO
      * @throws InventoryNotFoundException if no record exists with the given id
      */
-    public InventoryResponse getInventoryById(UUID id) {
+    public InventoryResponse getInventoryById(UUID id)
+    {
         return inventoryRepository.findById(id)
                 .map(inventoryMapper::toResponse)
                 .orElseThrow(() -> new InventoryNotFoundException("id", id));
@@ -68,7 +69,8 @@ public class InventoryService
      * @return the corresponding response DTO
      * @throws InventoryNotFoundException if no record exists for the combination
      */
-    public InventoryResponse getInventoryByProductAndLocation(UUID productId, UUID locationId) {
+    public InventoryResponse getInventoryByProductAndLocation(UUID productId, UUID locationId)
+    {
         return inventoryRepository.findByProductIdAndLocationId(productId, locationId)
                 .map(inventoryMapper::toResponse)
                 .orElseThrow(() -> new InventoryNotFoundException(
@@ -83,7 +85,8 @@ public class InventoryService
      * @param pageable   pagination and sorting information
      * @return a page of response DTOs
      */
-    public Page<InventoryResponse> getInventoryByLocation(UUID locationId, Pageable pageable) {
+    public Page<InventoryResponse> getInventoryByLocation(UUID locationId, Pageable pageable)
+    {
         return inventoryRepository.findByLocationId(locationId, pageable)
                 .map(inventoryMapper::toResponse);
     }
@@ -93,7 +96,8 @@ public class InventoryService
      *
      * @return a list of response DTOs
      */
-    public List<InventoryResponse> getAllInventory() {
+    public List<InventoryResponse> getAllInventory()
+    {
         return inventoryRepository.findAllWithDetails().stream()
                 .map(inventoryMapper::toResponse)
                 .toList();
@@ -105,7 +109,8 @@ public class InventoryService
      *
      * @return a list of low-stock response DTOs
      */
-    public List<InventoryResponse> getLowStockInventory() {
+    public List<InventoryResponse> getLowStockInventory()
+    {
         return inventoryRepository.findLowStock().stream()
                 .map(inventoryMapper::toResponse)
                 .toList();
@@ -121,7 +126,8 @@ public class InventoryService
      * @throws ProductNotFoundException  if the product does not exist
      */
     @Transactional
-    public InventoryResponse createInventory(CreateInventoryRequest request) {
+    public InventoryResponse createInventory(CreateInventoryRequest request)
+    {
         if (inventoryRepository.existsByProductIdAndLocationId(request.productId(), request.locationId()))
         {
             throw new ConflictException(
@@ -157,7 +163,8 @@ public class InventoryService
      * @throws InventoryNotFoundException if no record exists with the given id
      */
     @Transactional
-    public InventoryResponse updateMinThreshold(UUID id, UpdateInventoryRequest request) {
+    public InventoryResponse updateMinThreshold(UUID id, UpdateInventoryRequest request)
+    {
         Inventory inventory = getInventory(id);
         inventory.updateMinThreshold(request.minThreshold());
         return inventoryMapper.toResponse(inventoryRepository.save(inventory));
@@ -172,7 +179,8 @@ public class InventoryService
      * @throws InventoryNotFoundException if no record exists with the given id
      */
     @Transactional
-    public InventoryResponse addStock(UUID id, int quantity) {
+    public InventoryResponse addStock(UUID id, int quantity)
+    {
         Inventory inventory = getInventory(id);
         inventory.addStock(quantity);
         return inventoryMapper.toResponse(inventoryRepository.save(inventory));
@@ -188,7 +196,8 @@ public class InventoryService
      * @throws IllegalStateException      if there is insufficient physical stock
      */
     @Transactional
-    public InventoryResponse deductStock(UUID id, int quantity) {
+    public InventoryResponse deductStock(UUID id, int quantity)
+    {
         Inventory inventory = getInventory(id);
         inventory.deductStock(quantity);
         return inventoryMapper.toResponse(inventoryRepository.save(inventory));
@@ -201,7 +210,8 @@ public class InventoryService
      * @return the inventory entity
      * @throws InventoryNotFoundException if no record exists with the given id
      */
-    private Inventory getInventory(UUID id) {
+    private Inventory getInventory(UUID id)
+    {
         return inventoryRepository.findById(id)
                 .orElseThrow(() -> new InventoryNotFoundException("id", id));
     }

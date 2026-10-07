@@ -43,7 +43,8 @@ public class TransferOrderItem
     @Column(nullable = false)
     private Integer quantity;
 
-    protected TransferOrderItem() {
+    protected TransferOrderItem()
+    {
     }
 
     /**
@@ -53,10 +54,12 @@ public class TransferOrderItem
      * @param product       the product to transfer (must not be null)
      * @param quantity      the number of units to transfer (must be &gt; 0)
      * @throws IllegalArgumentException if {@code quantity} is &le; 0
-     * @throws NullPointerException  if {@code transferOrder} or {@code product} is null
+     * @throws NullPointerException     if {@code transferOrder} or {@code product} is null
      */
-    public TransferOrderItem(TransferOrder transferOrder, Product product, int quantity) {
-        if (quantity <= 0) {
+    public TransferOrderItem(TransferOrder transferOrder, Product product, int quantity)
+    {
+        if (quantity <= 0)
+        {
             throw new IllegalArgumentException("Quantity must be greater than zero");
         }
         this.transferOrder = Objects.requireNonNull(transferOrder, "Transfer order cannot be null");
@@ -71,7 +74,8 @@ public class TransferOrderItem
      * @throws IllegalArgumentException if {@code amount} is &le; 0, or if the
      *                                  resulting quantity would not fit in an {@code Integer}
      */
-    void addQuantity(int amount) {
+    void addQuantity(int amount)
+    {
         if (amount <= 0)
         {
             throw new IllegalArgumentException("Amount must be greater than zero");
@@ -79,8 +83,7 @@ public class TransferOrderItem
         try
         {
             this.quantity = Math.addExact(this.quantity, amount);
-        }
-        catch (ArithmeticException exception)
+        } catch (ArithmeticException exception)
         {
             throw new IllegalArgumentException("Quantity would exceed the maximum supported value", exception);
         }
@@ -89,28 +92,32 @@ public class TransferOrderItem
     /**
      * @return the item identifier
      */
-    public UUID getId() {
+    public UUID getId()
+    {
         return id;
     }
 
     /**
      * @return the parent transfer order
      */
-    public TransferOrder getTransferOrder() {
+    public TransferOrder getTransferOrder()
+    {
         return transferOrder;
     }
 
     /**
      * @return the product being transferred
      */
-    public Product getProduct() {
+    public Product getProduct()
+    {
         return product;
     }
 
     /**
      * @return the number of units to transfer
      */
-    public Integer getQuantity() {
+    public Integer getQuantity()
+    {
         return quantity;
     }
 }

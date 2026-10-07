@@ -28,11 +28,11 @@ public class ProductService
     /**
      * Creates a new product service with the given dependencies.
      *
-     * @param productRepository        the product repository
-     * @param inventoryRepository      the inventory repository
-     * @param transferOrderRepository  the transfer order repository
-     * @param reservationRepository    the transfer order reservation repository
-     * @param productMapper            the product mapper
+     * @param productRepository       the product repository
+     * @param inventoryRepository     the inventory repository
+     * @param transferOrderRepository the transfer order repository
+     * @param reservationRepository   the transfer order reservation repository
+     * @param productMapper           the product mapper
      */
     public ProductService(ProductRepository productRepository,
                           InventoryRepository inventoryRepository,

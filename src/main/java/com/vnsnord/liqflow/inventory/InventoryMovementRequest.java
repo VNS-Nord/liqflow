@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
  * @param quantity the number of units to move (must be greater than zero)
  */
 public record InventoryMovementRequest(@NotNull(message = "Quantity mandatory")
-                                   @Min(value = 1, message = "Quantity must be greater than zero")
-                                   Integer quantity)
+                                       @Min(value = 1, message = "Quantity must be greater than zero")
+                                       Integer quantity)
 {
 }

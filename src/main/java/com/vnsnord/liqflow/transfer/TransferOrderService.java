@@ -1,27 +1,21 @@
 package com.vnsnord.liqflow.transfer;
 
-import com.vnsnord.liqflow.inventory.Inventory;
-import com.vnsnord.liqflow.location.Location;
-import com.vnsnord.liqflow.product.Product;
 import com.vnsnord.liqflow.common.exception.ConflictException;
 import com.vnsnord.liqflow.common.exception.LocationNotFoundException;
 import com.vnsnord.liqflow.common.exception.ProductNotFoundException;
 import com.vnsnord.liqflow.common.exception.TransferOrderNotFoundException;
+import com.vnsnord.liqflow.inventory.Inventory;
 import com.vnsnord.liqflow.inventory.InventoryRepository;
+import com.vnsnord.liqflow.location.Location;
 import com.vnsnord.liqflow.location.LocationRepository;
+import com.vnsnord.liqflow.product.Product;
 import com.vnsnord.liqflow.product.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Application service for the full transfer order lifecycle, including item
@@ -117,7 +111,8 @@ public class TransferOrderService
      * @throws LocationNotFoundException if either location does not exist
      */
     @Transactional
-    public TransferOrderResponse createTransferOrder(CreateTransferOrderRequest request) {
+    public TransferOrderResponse createTransferOrder(CreateTransferOrderRequest request)
+    {
         String orderNumber = request.orderNumber().trim();
         if (transferOrderRepository.existsByOrderNumber(orderNumber))
         {
@@ -143,7 +138,8 @@ public class TransferOrderService
      * @throws ProductNotFoundException       if the product does not exist
      */
     @Transactional
-    public TransferOrderDetailResponse addItem(UUID orderId, TransferOrderItemRequest request) {
+    public TransferOrderDetailResponse addItem(UUID orderId, TransferOrderItemRequest request)
+    {
         TransferOrder order = findWithDetails(orderId);
         Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new ProductNotFoundException("id", request.productId()));
@@ -160,7 +156,8 @@ public class TransferOrderService
      * @throws TransferOrderNotFoundException if the order or the item does not exist
      */
     @Transactional
-    public TransferOrderDetailResponse removeItem(UUID orderId, UUID itemId) {
+    public TransferOrderDetailResponse removeItem(UUID orderId, UUID itemId)
+    {
         TransferOrder order = findWithDetails(orderId);
         TransferOrderItem item = order.getItems().stream()
                 .filter(candidate -> candidate.getId().equals(itemId))
@@ -186,7 +183,8 @@ public class TransferOrderService
      * @throws IllegalArgumentException       if the source has no inventory record for an item's product
      */
     @Transactional
-    public TransferOrderResponse submit(UUID id) {
+    public TransferOrderResponse submit(UUID id)
+    {
         TransferOrder order = findWithDetails(id);
         order.submit();
         reserveStock(order);
@@ -202,7 +200,8 @@ public class TransferOrderService
      * @throws IllegalStateException          if the order is not in submitted status
      */
     @Transactional
-    public TransferOrderResponse markInTransit(UUID id) {
+    public TransferOrderResponse markInTransit(UUID id)
+    {
         TransferOrder order = findWithDetails(id);
         order.markInTransit();
         return transferOrderMapper.toResponse(transferOrderRepository.save(order));
@@ -223,7 +222,8 @@ public class TransferOrderService
      *                                        reservation, or if either side lacks an inventory record
      */
     @Transactional
-    public TransferOrderResponse complete(UUID id) {
+    public TransferOrderResponse complete(UUID id)
+    {
         TransferOrder order = findWithDetails(id);
         List<TransferOrderReservation> reservations = reservationRepository.findByTransferOrderIdForUpdate(order.getId());
         moveStock(order, reservations);
@@ -241,7 +241,8 @@ public class TransferOrderService
      * @throws IllegalStateException          if the order is already completed
      */
     @Transactional
-    public TransferOrderResponse cancel(UUID id) {
+    public TransferOrderResponse cancel(UUID id)
+    {
         TransferOrder order = findWithDetails(id);
         order.cancel();
         releaseReservations(order);
@@ -407,6 +408,20 @@ public class TransferOrderService
     }
 
     /**
+     * Loads a transfer order with its items and locations eagerly to avoid
+     * lazy-loading issues, or throws when it does not exist.
+     *
+     * @param id the order identifier
+     * @return the transfer order entity
+     * @throws TransferOrderNotFoundException if no order exists with the given id
+     */
+    private TransferOrder findWithDetails(UUID id)
+    {
+        return transferOrderRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new TransferOrderNotFoundException("id", id));
+    }
+
+    /**
      * Points at a single inventory record, carrying the display values needed to
      * build a meaningful error message when the record is missing.
      *
@@ -432,18 +447,5 @@ public class TransferOrderService
             int byLocation = this.locationId.compareTo(other.locationId);
             return byLocation != 0 ? byLocation : this.productId.compareTo(other.productId);
         }
-    }
-
-    /**
-     * Loads a transfer order with its items and locations eagerly to avoid
-     * lazy-loading issues, or throws when it does not exist.
-     *
-     * @param id the order identifier
-     * @return the transfer order entity
-     * @throws TransferOrderNotFoundException if no order exists with the given id
-     */
-    private TransferOrder findWithDetails(UUID id) {
-        return transferOrderRepository.findWithDetailsById(id)
-                .orElseThrow(() -> new TransferOrderNotFoundException("id", id));
     }
 }

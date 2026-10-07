@@ -46,7 +46,7 @@ public interface TransferOrderReservationRepository extends JpaRepository<Transf
     @Query("SELECT r FROM TransferOrderReservation r "
             + "WHERE r.transferOrder.id = :transferOrderId AND r.status = :status ORDER BY r.id")
     List<TransferOrderReservation> findByTransferOrderIdAndStatus(@Param("transferOrderId") UUID transferOrderId,
-                                                                    @Param("status") ReservationStatus status);
+                                                                  @Param("status") ReservationStatus status);
 
     /**
      * Finds the reservations of a transfer order, acquiring a pessimistic write

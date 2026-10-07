@@ -25,7 +25,8 @@ public class TransferOrderController
      *
      * @param transferOrderService the transfer order application service
      */
-    public TransferOrderController(TransferOrderService transferOrderService) {
+    public TransferOrderController(TransferOrderService transferOrderService)
+    {
         this.transferOrderService = transferOrderService;
     }
 
@@ -36,7 +37,8 @@ public class TransferOrderController
      * @return the detailed order with HTTP 200
      */
     @GetMapping("/{id}")
-    public ResponseEntity<TransferOrderDetailResponse> getById(@PathVariable UUID id) {
+    public ResponseEntity<TransferOrderDetailResponse> getById(@PathVariable UUID id)
+    {
         return ResponseEntity.ok(transferOrderService.getTransferOrderDetailById(id));
     }
 
@@ -47,7 +49,8 @@ public class TransferOrderController
      * @return the page of orders with HTTP 200
      */
     @GetMapping
-    public ResponseEntity<Page<TransferOrderResponse>> getAll(Pageable pageable) {
+    public ResponseEntity<Page<TransferOrderResponse>> getAll(Pageable pageable)
+    {
         return ResponseEntity.ok(transferOrderService.getAllTransferOrders(pageable));
     }
 
@@ -58,7 +61,8 @@ public class TransferOrderController
      * @return the created order with a {@code Location} header and HTTP 201
      */
     @PostMapping
-    public ResponseEntity<TransferOrderResponse> createTransferOrder(@Valid @RequestBody CreateTransferOrderRequest request) {
+    public ResponseEntity<TransferOrderResponse> createTransferOrder(@Valid @RequestBody CreateTransferOrderRequest request)
+    {
         TransferOrderResponse response = transferOrderService.createTransferOrder(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -76,7 +80,8 @@ public class TransferOrderController
      */
     @PostMapping("/{id}/items")
     public ResponseEntity<TransferOrderDetailResponse> addItem(@PathVariable UUID id,
-                                                               @Valid @RequestBody TransferOrderItemRequest request) {
+                                                               @Valid @RequestBody TransferOrderItemRequest request)
+    {
         return ResponseEntity.ok(transferOrderService.addItem(id, request));
     }
 
@@ -89,7 +94,8 @@ public class TransferOrderController
      */
     @DeleteMapping("/{id}/items/{itemId}")
     public ResponseEntity<TransferOrderDetailResponse> removeItem(@PathVariable UUID id,
-                                                                  @PathVariable UUID itemId) {
+                                                                  @PathVariable UUID itemId)
+    {
         return ResponseEntity.ok(transferOrderService.removeItem(id, itemId));
     }
 
@@ -100,7 +106,8 @@ public class TransferOrderController
      * @return the updated order with HTTP 200
      */
     @PostMapping("/{id}/submit")
-    public ResponseEntity<TransferOrderResponse> submit(@PathVariable UUID id) {
+    public ResponseEntity<TransferOrderResponse> submit(@PathVariable UUID id)
+    {
         return ResponseEntity.ok(transferOrderService.submit(id));
     }
 
@@ -111,7 +118,8 @@ public class TransferOrderController
      * @return the updated order with HTTP 200
      */
     @PostMapping("/{id}/in-transit")
-    public ResponseEntity<TransferOrderResponse> markInTransit(@PathVariable UUID id) {
+    public ResponseEntity<TransferOrderResponse> markInTransit(@PathVariable UUID id)
+    {
         return ResponseEntity.ok(transferOrderService.markInTransit(id));
     }
 
@@ -123,7 +131,8 @@ public class TransferOrderController
      * @return the updated order with HTTP 200
      */
     @PostMapping("/{id}/complete")
-    public ResponseEntity<TransferOrderResponse> complete(@PathVariable UUID id) {
+    public ResponseEntity<TransferOrderResponse> complete(@PathVariable UUID id)
+    {
         return ResponseEntity.ok(transferOrderService.complete(id));
     }
 
@@ -134,7 +143,8 @@ public class TransferOrderController
      * @return the updated order with HTTP 200
      */
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<TransferOrderResponse> cancel(@PathVariable UUID id) {
+    public ResponseEntity<TransferOrderResponse> cancel(@PathVariable UUID id)
+    {
         return ResponseEntity.ok(transferOrderService.cancel(id));
     }
 }
