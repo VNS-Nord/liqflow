@@ -12,7 +12,7 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 | What problem does it address? | Keeping product availability consistent when the same product is stocked in several warehouses, hubs, or stores. |
 | What is the main workflow? | Create products and locations, maintain per-location inventory, create a transfer order, and move stock when the order is completed. |
 | What is implemented? | REST endpoints, domain rules, PostgreSQL persistence, Flyway migrations, validation, error handling, locking, and automated tests. |
-| How is it structured? | As a monolithic Spring Boot application with separate controller, service, domain, persistence, DTO, and exception layers. |
+| How is it structured? | As a monolithic Spring Boot application organized package-by-feature: `product`, `location`, `inventory`, and `transfer`, each owning its controller, service, entity, repository, mapper, and DTOs, plus a shared `common/exception` package. |
 
 ## Implemented functionality
 
@@ -43,16 +43,18 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 
 ## Architecture
 
-LiqFlow is a monolithic Spring Boot application with a layered architecture:
+LiqFlow is a monolithic Spring Boot application organized package-by-feature. Each business capability keeps its controller, service, entity, repository, mapper, and request/response DTOs in one package, so a feature can be read without jumping between layer packages. Only cross-cutting error handling is shared, under `common/exception`.
+
+Request flow within a feature:
 
 ```text
 HTTP client
     ↓
-Spring MVC controllers
+Feature controller (e.g. `inventory/InventoryController`)
     ↓
-Transactional services
+Transactional feature service (e.g. `inventory/InventoryService`)
     ↓
-Domain entities and Spring Data repositories
+Feature entity and Spring Data repository
     ↓
 PostgreSQL
 ```
@@ -61,12 +63,11 @@ Flyway prepares the PostgreSQL schema when the application starts.
 
 Key code locations:
 
-- [`controller/`](src/main/java/com/vnsnord/liqflow/controller) — REST endpoints.
-- [`service/`](src/main/java/com/vnsnord/liqflow/service) — use cases, transactions, queries, and mapping; transfer completion is coordinated in [`TransferOrderService.java`](src/main/java/com/vnsnord/liqflow/service/TransferOrderService.java).
-- [`domain/entity/`](src/main/java/com/vnsnord/liqflow/domain/entity) — domain behavior in [`Inventory.java`](src/main/java/com/vnsnord/liqflow/domain/entity/Inventory.java), [`TransferOrder.java`](src/main/java/com/vnsnord/liqflow/domain/entity/TransferOrder.java), and [`TransferOrderReservation.java`](src/main/java/com/vnsnord/liqflow/domain/entity/TransferOrderReservation.java).
-- [`infrastructure/persistence/`](src/main/java/com/vnsnord/liqflow/infrastructure/persistence) — Spring Data repositories, locking, and queries.
-- [`dto/`](src/main/java/com/vnsnord/liqflow/dto) — validated request and response contracts.
-- [`exception/`](src/main/java/com/vnsnord/liqflow/exception) — typed errors and API error responses.
+- [`product/`](src/main/java/com/vnsnord/liqflow/product) — products: controller, service, entity, repository, mapper, and request/response contracts.
+- [`location/`](src/main/java/com/vnsnord/liqflow/location) — locations and the [`LocationType`](src/main/java/com/vnsnord/liqflow/location/LocationType.java) enum, in the same controller/service/entity/repository/DTO shape.
+- [`inventory/`](src/main/java/com/vnsnord/liqflow/inventory) — per-location stock, including the low-stock query and the stock movements; domain behavior lives in [`Inventory.java`](src/main/java/com/vnsnord/liqflow/inventory/Inventory.java).
+- [`transfer/`](src/main/java/com/vnsnord/liqflow/transfer) — transfer orders, items, and reservations; transfer completion is coordinated in [`TransferOrderService.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrderService.java), with domain rules in [`TransferOrder.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrder.java) and [`TransferOrderReservation.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrderReservation.java).
+- [`common/exception/`](src/main/java/com/vnsnord/liqflow/common/exception) — typed errors, API error responses, and the global exception handler shared by every feature.
 - [`db/migration/`](src/main/resources/db/migration) — schema creation and demo data; the initial constraints are in [`V1__init_schema.sql`](src/main/resources/db/migration/V1__init_schema.sql).
 
 ## Technology
@@ -353,9 +354,11 @@ The test suite uses:
 - Mockito unit tests for service behavior.
 - MockMvc tests for controller routing, validation, serialization, and status codes.
 - Focused tests for centralized exception handling.
-- [`@SpringBootTest` integration tests](src/test/java/com/vnsnord/liqflow/integration) backed by the `liqflow_test` database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
+- A [`@SpringBootTest` integration test](src/test/java/com/vnsnord/liqflow/inventory/InventoryFlowIntegrationTest.java) backed by the `liqflow_test` database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
 - Integration coverage for the reservation rules: two orders competing for the same stock, cancellation returning a hold to available quantity, and an order completing without consuming another order's reservation.
 - A concurrency test that completes two transfers in opposite directions simultaneously, on two real connections, and asserts both commits succeed. Removing the deterministic lock order makes this test fail on the first round with a PostgreSQL `deadlock detected`, so the claim is guarded rather than asserted.
+
+Unit, web, and integration tests sit next to the feature they cover, under [`product/`](src/test/java/com/vnsnord/liqflow/product), [`location/`](src/test/java/com/vnsnord/liqflow/location), [`inventory/`](src/test/java/com/vnsnord/liqflow/inventory), and [`transfer/`](src/test/java/com/vnsnord/liqflow/transfer); shared error-handling tests are in [`exception/`](src/test/java/com/vnsnord/liqflow/exception).
 
 The full suite requires the PostgreSQL instance described in [Running locally](#running-locally), plus the `liqflow_test` database. Tests fail rather than skip when either is missing.
 
