@@ -1,5 +1,9 @@
 package com.vnsnord.liqflow.exception;
 
+import com.vnsnord.liqflow.common.exception.ConflictException;
+import com.vnsnord.liqflow.common.exception.ErrorResponse;
+import com.vnsnord.liqflow.common.exception.GlobalExceptionHandler;
+import com.vnsnord.liqflow.common.exception.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Assertions;
@@ -11,7 +15,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -285,11 +288,11 @@ public class GlobalExceptionHandlerTest
         // When & Then
         Assertions.assertEquals(HttpStatus.CONFLICT,
                 globalExceptionHandler.handlePessimisticLocking(
-                        new DeadlockLoserDataAccessException("deadlock", new RuntimeException()), request)
+                                new PessimisticLockingFailureException("deadlock", new RuntimeException()), request)
                         .getStatusCode());
         Assertions.assertEquals(HttpStatus.CONFLICT,
                 globalExceptionHandler.handlePessimisticLocking(
-                        new CannotAcquireLockException("timeout"), request)
+                                new CannotAcquireLockException("timeout"), request)
                         .getStatusCode());
     }
 
