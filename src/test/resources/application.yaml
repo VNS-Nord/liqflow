@@ -1,0 +1,46 @@
+# Test configuration.
+#
+# This file shadows src/main/resources/application.yaml on the test classpath,
+# so it must be self-contained: nothing is inherited from the main config.
+#
+# It points every @SpringBootTest at a separate `liqflow_test` database so that
+# integration tests never mutate the development data in `liqflow`. The dev
+# profile is intentionally not activated here, which keeps SQL logging and
+# connection-leak detection off during test runs.
+spring:
+  application:
+    name: liqflow
+
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/liqflow_test?reWriteBatchedInserts=true&prepareThreshold=5}
+    username: ${TEST_DB_USERNAME:${DB_USERNAME:postgres}}
+    password: ${TEST_DB_PASSWORD:${DB_PASSWORD:postgres}}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      pool-name: LiqFlowTestHikariCP
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 15000
+      max-lifetime: 1140000
+      idle-timeout: 0
+
+  jpa:
+    open-in-view: false
+
+    hibernate:
+      ddl-auto: validate
+
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+    clean-disabled: false
