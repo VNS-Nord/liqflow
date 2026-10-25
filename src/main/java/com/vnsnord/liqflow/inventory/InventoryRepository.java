@@ -94,7 +94,7 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID>
      */
     @EntityGraph(attributePaths = {"location", "product"})
     @Query("SELECT i FROM Inventory i")
-    List<Inventory> findAllWithDetails();
+    Page<Inventory> findAllWithDetails(Pageable pageable);
 
     /**
      * Returns all inventory records whose available quantity (physical minus

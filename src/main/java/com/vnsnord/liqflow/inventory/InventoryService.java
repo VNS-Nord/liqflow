@@ -96,11 +96,9 @@ public class InventoryService
      *
      * @return a list of response DTOs
      */
-    public List<InventoryResponse> getAllInventory()
+    public Page<InventoryResponse> getAllInventory(Pageable pageable)
     {
-        return inventoryRepository.findAllWithDetails().stream()
-                .map(inventoryMapper::toResponse)
-                .toList();
+        return inventoryRepository.findAllWithDetails(pageable).map(inventoryMapper::toResponse);
     }
 
     /**

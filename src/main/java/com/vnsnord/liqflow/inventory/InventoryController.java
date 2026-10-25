@@ -32,6 +32,17 @@ public class InventoryController
     }
 
     /**
+     * Returns all inventory records.
+     *
+     * @return the list of records with HTTP 200
+     */
+    @GetMapping
+    public ResponseEntity<Page<InventoryResponse>> getAll(Pageable pageable)
+    {
+        return ResponseEntity.ok(inventoryService.getAllInventory(pageable));
+    }
+
+    /**
      * Returns a single inventory record by its identifier.
      *
      * @param id the inventory identifier
@@ -83,17 +94,6 @@ public class InventoryController
     public ResponseEntity<List<InventoryResponse>> getLowStock()
     {
         return ResponseEntity.ok(inventoryService.getLowStockInventory());
-    }
-
-    /**
-     * Returns all inventory records.
-     *
-     * @return the list of records with HTTP 200
-     */
-    @GetMapping
-    public ResponseEntity<List<InventoryResponse>> getAll()
-    {
-        return ResponseEntity.ok(inventoryService.getAllInventory());
     }
 
     /**

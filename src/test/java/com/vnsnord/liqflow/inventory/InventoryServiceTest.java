@@ -229,17 +229,19 @@ class InventoryServiceTest
                 2
         );
 
-        Mockito.when(inventoryRepository.findAllWithDetails()).thenReturn(List.of(inventory));
+        Mockito.when(inventoryRepository.findAllWithDetails(Mockito.any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(inventory), PageRequest.of(0, 10), 1));
         Mockito.when(inventoryMapper.toResponse(inventory)).thenReturn(dto);
 
         // When
-        List<InventoryResponse> result = inventoryService.getAllInventory();
+        Page<InventoryResponse> result = inventoryService.getAllInventory(PageRequest.of(0, 10));
 
         // Then
         Assertions.assertNotNull(result);
-        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(1, result.getTotalElements());
+        Assertions.assertEquals(1, result.getContent().size());
 
-        Mockito.verify(inventoryRepository).findAllWithDetails();
+        Mockito.verify(inventoryRepository).findAllWithDetails(Mockito.any(Pageable.class));
         Mockito.verify(inventoryMapper).toResponse(inventory);
     }
 
