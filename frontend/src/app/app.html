@@ -1,0 +1,43 @@
+<div class="min-h-screen bg-gray-100 flex">
+
+  <!-- 1. Šoninis meniu (Sidebar) -->
+  <aside class="w-64 bg-slate-900 text-white flex flex-col">
+    <!-- Logotipas / Pavadinimas -->
+    <div class="h-16 flex items-center px-6 text-xl font-bold tracking-wider bg-slate-950">
+      📦 LiqFlow
+    </div>
+
+    <!-- Meniu punktai -->
+    <nav class="flex-1 px-4 py-6 space-y-2">
+      <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-medium">
+        📊 Prekių likučiai
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition">
+        🔄 Perkėlimai (Transfers)
+      </a>
+      <a href="#" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition">
+        🏢 Sandėlių lokacijos
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Dešinioji pusė (Viršutinis baras + Turinys) -->
+  <div class="flex-1 flex flex-col">
+
+    <!-- 2. Viršutinė juosta (Navbar) -->
+    <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm">
+      <span class="text-gray-600 font-medium">Sandėlio valdymo sistema</span>
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-semibold text-gray-700">Vartotojas (Admin)</span>
+      </div>
+    </header>
+
+    <!-- 3. Pagrindinis turinys (čia kraunasi tavo InventoryComponent) -->
+    <main class="flex-1 p-8">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <router-outlet></router-outlet>
+      </div>
+    </main>
+
+  </div>
+</div>

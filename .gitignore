@@ -29,3 +29,9 @@ replay_pid*
 *.iml
 .idea/
 MYREADME.md
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.angular/
+/frontend/coverage/
