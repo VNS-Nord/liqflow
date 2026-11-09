@@ -42,5 +42,3 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-
-    clean-disabled: false
