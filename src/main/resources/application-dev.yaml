@@ -9,3 +9,9 @@ spring:
   datasource:
     hikari:
       leak-detection-threshold: 3000
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
