@@ -94,7 +94,7 @@ public class LocationServiceTest
         LocationResponse expectedResponse = new LocationResponse(generatedId, "LOC-01", "Main Warehouse", LocationType.CENTRAL_WAREHOUSE, "Street 1");
 
         when(locationRepository.existsByCode("LOC-01")).thenReturn(false);
-        when(locationMapper.toRequest(request)).thenReturn(location);
+        when(locationMapper.toEntity(request)).thenReturn(location);
         when(locationRepository.save(location)).thenReturn(savedLocation);
         when(locationMapper.toResponse(savedLocation)).thenReturn(expectedResponse);
 

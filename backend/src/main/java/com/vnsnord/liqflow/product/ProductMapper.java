@@ -31,7 +31,7 @@ public class ProductMapper
      * @param request the creation request
      * @return a new product entity
      */
-    public Product toRequest(CreateProductRequest request)
+    public Product toEntity(CreateProductRequest request)
     {
         return new Product(request.sku(),
                 request.name(),

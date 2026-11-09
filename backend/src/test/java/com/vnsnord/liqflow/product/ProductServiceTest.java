@@ -187,7 +187,7 @@ public class ProductServiceTest
         ProductResponse expectedResponse = new ProductResponse(generatedId, "SKU-100", "New Product", "Desc", new BigDecimal("150.00"));
 
         when(productRepository.existsBySku("SKU-100")).thenReturn(false);
-        when(productMapper.toRequest(request)).thenReturn(product);
+        when(productMapper.toEntity(request)).thenReturn(product);
         when(productRepository.save(product)).thenReturn(savedProduct);
         when(productMapper.toResponse(savedProduct)).thenReturn(expectedResponse);
 

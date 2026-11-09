@@ -29,7 +29,7 @@ public class LocationMapper
      * @param request the creation request
      * @return a new location entity
      */
-    public Location toRequest(CreateLocationRequest request)
+    public Location toEntity(CreateLocationRequest request)
     {
         return new Location(request.code(),
                 request.name(),

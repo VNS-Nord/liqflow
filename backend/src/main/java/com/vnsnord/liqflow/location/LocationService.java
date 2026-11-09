@@ -100,7 +100,7 @@ public class LocationService
         {
             throw new ConflictException("Location with code '" + normalizedCode + "' already exists");
         }
-        Location location = locationMapper.toRequest(request);
+        Location location = locationMapper.toEntity(request);
         Location savedLocation = locationRepository.save(location);
         return locationMapper.toResponse(savedLocation);
     }

@@ -100,7 +100,7 @@ public class ProductService
         {
             throw new ConflictException("Product with SKU '" + request.sku().trim() + "' already exists");
         }
-        Product product = productMapper.toRequest(request);
+        Product product = productMapper.toEntity(request);
         Product savedProduct = productRepository.save(product);
         return productMapper.toResponse(savedProduct);
     }
