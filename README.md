@@ -1,9 +1,15 @@
 # LiqFlow
 
 > [!IMPORTANT]
-> **Project status: work in progress, not production-ready.** The core API is functional.
+> **Project status: work in progress, not production-ready.** The backend API is functional. Both frontend applications are early prototypes and are not finished.
 
-LiqFlow is a backend inventory-management API for tracking products and current stock levels across multiple locations. It also models transfer orders that move stock between a source and a target location through an explicit lifecycle.
+LiqFlow is a full-stack inventory-management project for tracking products and current stock levels across multiple locations. It also models transfer orders that move stock between a source and a target location through an explicit lifecycle.
+
+The repository is a monorepo containing three applications:
+
+- `backend/` — the Spring Boot REST API, which contains the implemented business functionality.
+- `frontend_angular/` — an Angular prototype focused on viewing inventory.
+- `frontend_react/` — a React prototype focused on session-based authentication and a dashboard shell.
 
 ## 30-second summary
 
@@ -11,8 +17,8 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 |----------|--------|
 | What problem does it address? | Keeping product availability consistent when the same product is stocked in several warehouses, hubs, or stores. |
 | What is the main workflow? | Create products and locations, maintain per-location inventory, create a transfer order, and move stock when the order is completed. |
-| What is implemented? | REST endpoints, domain rules, PostgreSQL persistence, Flyway migrations, validation, error handling, locking, and automated tests. |
-| How is it structured? | As a monolithic Spring Boot application organized package-by-feature: `product`, `location`, `inventory`, and `transfer`, each owning its controller, service, entity, repository, mapper, and DTOs, plus a shared `common/exception` package. |
+| What is implemented? | A REST API with domain rules, PostgreSQL persistence, Flyway migrations, validation, error handling, locking, automated tests, session authentication, roles/permissions, and location access checks. The Angular and React frontends are partial prototypes. |
+| How is it structured? | As a monorepo: a monolithic Spring Boot backend organized package-by-feature (`product`, `location`, `inventory`, `transfer`, `identity`, plus `security` and `common/exception`), and two independent frontend apps that proxy `/api` requests to the backend during development. |
 
 ## Implemented functionality
 
@@ -28,6 +34,9 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 - Submit, mark in transit, complete, or cancel transfer orders.
 - Reserve source stock when an order is submitted, and release it again if the order is cancelled.
 - Move every item in a transfer atomically when the order is completed.
+- Log in with a session cookie, fetch a CSRF token, and log out.
+- Create users with roles and permissions, and protect transfer operations with permission checks.
+- Reject a transfer submission when the current user is not assigned to the source location.
 
 ### Technical highlights
 
@@ -38,12 +47,24 @@ LiqFlow is a backend inventory-management API for tracking products and current 
 - JPA optimistic locking through entity versions, plus pessimistic locks acquired in a fixed order during transfer completion.
 - Flyway-managed schema changes with Hibernate schema validation.
 - Database constraints for unique SKUs, location codes, transfer-order numbers, and product/location inventory pairs.
+- Spring Security with session-based authentication, CSRF protection, Argon2 password hashing, and method-level permission checks.
+- Roles, permissions, and user-to-location assignments stored in PostgreSQL.
 - Centralized handling of validation, domain, not-found, duplicate-data, and persistence-conflict errors.
 - Mockito service tests, MockMvc web tests, and PostgreSQL integration tests.
+- Angular 22 standalone components with signals, and React 19 with TypeScript and Vite.
+
+### Frontend status
+
+Both frontends are incomplete and are not yet wired into a production build.
+
+- **Angular (`frontend_angular/`)** — shows a paginated inventory table with a location filter and low-stock highlighting. It has no login flow yet, so it cannot authenticate against the secured backend and currently receives `401` responses.
+- **React (`frontend_react/`)** — implements CSRF-aware login, logout, session restoration via `/api/v1/auth/me`, and a basic dashboard shell. Inventory, transfer, and location screens are not implemented yet.
 
 ## Architecture
 
-LiqFlow is a monolithic Spring Boot application organized package-by-feature. Each business capability keeps its controller, service, entity, repository, mapper, and request/response DTOs in one package, so a feature can be read without jumping between layer packages. Only cross-cutting error handling is shared, under `common/exception`.
+LiqFlow is a monorepo. The `backend/` directory holds a monolithic Spring Boot application organized package-by-feature. Each business capability keeps its controller, service, entity, repository, mapper, and request/response DTOs in one package, so a feature can be read without jumping between layer packages. Cross-cutting error handling is shared under `common/exception`, identity and access rules live under `identity/`, and security infrastructure lives under `security/`.
+
+The `frontend_angular/` and `frontend_react/` directories are independent single-page applications. During development each one serves its own dev server and proxies `/api` requests to the backend, so neither frontend is bundled into the Spring Boot jar.
 
 Request flow within a feature:
 
@@ -63,23 +84,35 @@ Flyway prepares the PostgreSQL schema when the application starts.
 
 Key code locations:
 
-- [`product/`](src/main/java/com/vnsnord/liqflow/product) — products: controller, service, entity, repository, mapper, and request/response contracts.
-- [`location/`](src/main/java/com/vnsnord/liqflow/location) — locations and the [`LocationType`](src/main/java/com/vnsnord/liqflow/location/LocationType.java) enum, in the same controller/service/entity/repository/DTO shape.
-- [`inventory/`](src/main/java/com/vnsnord/liqflow/inventory) — per-location stock, including the low-stock query and the stock movements; domain behavior lives in [`Inventory.java`](src/main/java/com/vnsnord/liqflow/inventory/Inventory.java).
-- [`transfer/`](src/main/java/com/vnsnord/liqflow/transfer) — transfer orders, items, and reservations; transfer completion is coordinated in [`TransferOrderService.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrderService.java), with domain rules in [`TransferOrder.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrder.java) and [`TransferOrderReservation.java`](src/main/java/com/vnsnord/liqflow/transfer/TransferOrderReservation.java).
-- [`common/exception/`](src/main/java/com/vnsnord/liqflow/common/exception) — typed errors, API error responses, and the global exception handler shared by every feature.
-- [`db/migration/`](src/main/resources/db/migration) — schema creation and demo data; the initial constraints are in [`V1__init_schema.sql`](src/main/resources/db/migration/V1__init_schema.sql).
+- [`product/`](backend/src/main/java/com/vnsnord/liqflow/product) — products: controller, service, entity, repository, mapper, and request/response contracts.
+- [`location/`](backend/src/main/java/com/vnsnord/liqflow/location) — locations, the [`LocationType`](backend/src/main/java/com/vnsnord/liqflow/location/LocationType.java) enum, and location access checks.
+- [`inventory/`](backend/src/main/java/com/vnsnord/liqflow/inventory) — per-location stock, including the low-stock query and the stock movements; domain behavior lives in [`Inventory.java`](backend/src/main/java/com/vnsnord/liqflow/inventory/Inventory.java).
+- [`transfer/`](backend/src/main/java/com/vnsnord/liqflow/transfer) — transfer orders, items, and reservations; transfer completion is coordinated in [`TransferOrderService.java`](backend/src/main/java/com/vnsnord/liqflow/transfer/TransferOrderService.java), with domain rules in [`TransferOrder.java`](backend/src/main/java/com/vnsnord/liqflow/transfer/TransferOrder.java) and [`TransferOrderReservation.java`](backend/src/main/java/com/vnsnord/liqflow/transfer/TransferOrderReservation.java).
+- [`identity/`](backend/src/main/java/com/vnsnord/liqflow/identity) — users, roles, permissions, and the authentication endpoints.
+- [`security/`](backend/src/main/java/com/vnsnord/liqflow/security) — Spring Security configuration, session and CSRF setup, and Argon2 password encoding.
+- [`common/exception/`](backend/src/main/java/com/vnsnord/liqflow/common/exception) — typed errors, API error responses, and the global exception handler shared by every feature.
+- [`db/migration/`](backend/src/main/resources/db/migration) — schema creation, demo data, and identity seed data; the initial constraints are in [`V1__init_schema.sql`](backend/src/main/resources/db/migration/V1__init_schema.sql).
+- [`frontend_angular/`](frontend_angular) — Angular inventory prototype, with the inventory screen in [`inventory.component.ts`](frontend_angular/src/app/inventory.component.ts).
+- [`frontend_react/`](frontend_react) — React authentication and dashboard prototype, starting from [`App.tsx`](frontend_react/src/App.tsx).
 
 ## Technology
+
+### Backend
 
 - Java 21
 - Spring Boot 4.1.1
 - Spring MVC and Spring Data JPA
+- Spring Security with session authentication, CSRF protection, and Argon2 password hashing
 - PostgreSQL
 - Flyway
 - Jakarta Bean Validation
 - JUnit, Mockito, MockMvc, and Spring integration tests
 - Maven Wrapper
+
+### Frontends
+
+- Angular 22, TypeScript, RxJS, and Angular CLI (`frontend_angular/`)
+- React 19, TypeScript, Vite, and ESLint (`frontend_react/`)
 
 ## Running locally
 
@@ -87,6 +120,7 @@ Key code locations:
 
 - JDK 21
 - A PostgreSQL database
+- Node.js 22+ and npm for the frontend applications
 - Docker is optional and is only used here to start PostgreSQL
 
 The default configuration expects PostgreSQL at `localhost:5432`, database `liqflow`, with username/password `postgres`/`postgres`. The credentials can be overridden with `DB_USERNAME` and `DB_PASSWORD`.
@@ -102,9 +136,10 @@ docker run --rm -d \
   postgres:18
 ```
 
-Start the application:
+Start the backend from the `backend/` directory:
 
 ```sh
+cd backend
 ./mvnw spring-boot:run
 ```
 
@@ -112,11 +147,58 @@ The API is then available under `http://localhost:8080/api/v1`.
 
 The `dev` profile is the default. It enables SQL logging and Hikari connection-leak detection. Flyway creates the schema and loads demo data into a fresh database.
 
-The application only ever talks to `liqflow`. Tests use a separate database, see [Tests](#tests).
+The backend only ever talks to `liqflow`. Tests use a separate database, see [Tests](#tests).
+
+### Angular frontend
+
+From the `frontend_angular/` directory:
+
+```sh
+cd frontend_angular
+npm install
+npm start
+```
+
+The application is then available at `http://localhost:4200/`. `npm start` runs `ng serve` with `proxy.conf.json`, which forwards `/api` requests to `http://localhost:8080`. The inventory screen currently has no login flow, so it cannot load data from the secured backend yet.
+
+### React frontend
+
+From the `frontend_react/` directory:
+
+```sh
+cd frontend_react
+npm install
+npm run dev
+```
+
+Vite serves the application at `http://localhost:5173/` and proxies `/api` requests to `http://localhost:8080` (see `vite.config.ts`). The React app currently provides only login, logout, and a dashboard shell. Flyway seeds roles and permissions but no user accounts, so a development user must be created separately before the login screen can be used.
+
+Neither frontend is finished, and neither is required for using the backend API.
 
 ## API overview
 
 All endpoints use the `/api/v1` prefix.
+
+Every endpoint except `POST /auth/login` and `GET /auth/csrf` requires an authenticated session. State-changing requests must include the CSRF header returned by `GET /auth/csrf` (`X-CSRF-TOKEN` by default). Unauthenticated requests receive `401`, and authorization failures receive `403`.
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/auth/csrf` | Get the CSRF token and its header name |
+| `POST` | `/auth/login` | Log in with a username and password and start a session |
+| `GET` | `/auth/me` | Get the currently authenticated username |
+| `POST` | `/auth/logout` | End the session |
+
+Authentication uses an HTTP session cookie and CSRF protection, not a bearer token. The session cookie is `JSESSIONID`, and the session-id and CSRF token are rotated on login.
+
+### Users
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/users` | Create a user; requires the `USER_MANAGE` permission |
+
+Roles and permissions are seeded by Flyway. Transfer operations are additionally protected by method-level permission checks (`TRANSFER_ORDER_READ`, `TRANSFER_ORDER_CREATE`, `TRANSFER_ORDER_EDIT`, `TRANSFER_ORDER_SUBMIT`, `TRANSFER_ORDER_DISPATCH`, `TRANSFER_ORDER_RECEIVE`, and `TRANSFER_ORDER_CANCEL`), and submitting an order requires the current user to be assigned to its source location.
 
 ### Products
 
@@ -180,7 +262,23 @@ Paginated endpoints accept zero-based `page`, `size`, and `sort` query parameter
 
 ## Example workflow
 
-The following example assumes the application is running and that the UUIDs in requests are replaced with IDs returned by the API.
+The API uses an authenticated session and CSRF protection. Authenticate first and keep the cookies:
+
+```sh
+# Get a CSRF token and cookie
+curl -c cookies.txt http://localhost:8080/api/v1/auth/csrf
+
+# Log in with the token from the previous response
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -H 'X-CSRF-TOKEN: <csrf-token>' \
+  -d '{"username":"<username>","password":"<password>"}'
+
+# Logging in rotates the token, so fetch a new one for later writes
+curl -b cookies.txt -c cookies.txt http://localhost:8080/api/v1/auth/csrf
+```
+
+The examples below assume this authenticated session and omit the cookie jar and CSRF header for brevity. Add `-b cookies.txt -c cookies.txt` and a current `X-CSRF-TOKEN` header to every write request when running them by hand. The UUIDs in requests are placeholders for IDs returned by the API.
 
 Create a product:
 
@@ -341,11 +439,12 @@ Or, if PostgreSQL runs natively on your machine:
 CREATE DATABASE liqflow_test;
 ```
 
-Flyway migrates `liqflow_test` automatically on the first test run, so no manual migration step is needed. The connection is configured in [`src/test/resources/application.yaml`](src/test/resources/application.yaml) and can be overridden with `TEST_DB_URL`, `TEST_DB_USERNAME`, and `TEST_DB_PASSWORD` (falling back to `DB_USERNAME`/`DB_PASSWORD`). That file shadows the main `application.yaml` on the test classpath, so it is self-contained.
+Flyway migrates `liqflow_test` automatically on the first test run, so no manual migration step is needed. The connection is configured in [`backend/src/test/resources/application.yaml`](backend/src/test/resources/application.yaml) and can be overridden with `TEST_DB_URL`, `TEST_DB_USERNAME`, and `TEST_DB_PASSWORD` (falling back to `DB_USERNAME`/`DB_PASSWORD`). That file shadows the main `application.yaml` on the test classpath, so it is self-contained.
 
-Run the full suite with:
+Run the full suite from the `backend/` directory with:
 
 ```sh
+cd backend
 ./mvnw test
 ```
 
@@ -354,11 +453,12 @@ The test suite uses:
 - Mockito unit tests for service behavior.
 - MockMvc tests for controller routing, validation, serialization, and status codes.
 - Focused tests for centralized exception handling.
-- A [`@SpringBootTest` integration test](src/test/java/com/vnsnord/liqflow/inventory/InventoryFlowIntegrationTest.java) backed by the `liqflow_test` database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
+- A [`@SpringBootTest` integration test](backend/src/test/java/com/vnsnord/liqflow/inventory/InventoryFlowIntegrationTest.java) backed by the `liqflow_test` database. Each service call commits on its own, so the tests exercise real transaction boundaries rather than a single rolled-back fixture.
 - Integration coverage for the reservation rules: two orders competing for the same stock, cancellation returning a hold to available quantity, and an order completing without consuming another order's reservation.
 - A concurrency test that completes two transfers in opposite directions simultaneously, on two real connections, and asserts both commits succeed. Removing the deterministic lock order makes this test fail on the first round with a PostgreSQL `deadlock detected`, so the claim is guarded rather than asserted.
+- A shared [`BaseIntegrationTest`](backend/src/test/java/com/vnsnord/liqflow/BaseIntegrationTest.java) that creates users for the seeded roles and authenticates them, so integration tests can call permission-protected services.
 
-Unit, web, and integration tests sit next to the feature they cover, under [`product/`](src/test/java/com/vnsnord/liqflow/product), [`location/`](src/test/java/com/vnsnord/liqflow/location), [`inventory/`](src/test/java/com/vnsnord/liqflow/inventory), and [`transfer/`](src/test/java/com/vnsnord/liqflow/transfer); shared error-handling tests are in [`exception/`](src/test/java/com/vnsnord/liqflow/exception).
+Unit, web, and integration tests sit next to the feature they cover, under [`product/`](backend/src/test/java/com/vnsnord/liqflow/product), [`location/`](backend/src/test/java/com/vnsnord/liqflow/location), [`inventory/`](backend/src/test/java/com/vnsnord/liqflow/inventory), and [`transfer/`](backend/src/test/java/com/vnsnord/liqflow/transfer); shared error-handling tests are in [`exception/`](backend/src/test/java/com/vnsnord/liqflow/exception).
 
 The full suite requires the PostgreSQL instance described in [Running locally](#running-locally), plus the `liqflow_test` database. Tests fail rather than skip when either is missing.
 
