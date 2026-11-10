@@ -1,7 +1,6 @@
 import {useState} from 'react';
 import './LoginPage.css';
 
-import { getCsrfToken } from '../api/authApi.ts';
 import { login, getCurrentUser } from '../api/authApi.ts';
 import type { AuthenticatedUser } from '../types.ts';
 
