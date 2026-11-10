@@ -30,8 +30,23 @@ replay_pid*
 .idea/
 MYREADME.md
 
-# Frontend
-/frontend/node_modules/
-/frontend/dist/
-/frontend/.angular/
-/frontend/coverage/
+# Angular Frontend
+/frontend_angular/node_modules/
+/frontend_angular/dist/
+/frontend_angular/.angular/
+/frontend_angular/coverage/
+
+# React Frontend (Vite)
+/frontend_react/node_modules/
+/frontend_react/dist/
+/frontend_react/coverage/
+
+# Frontend environment variables
+/frontend_angular/.env.local
+/frontend_react/.env.local
+/frontend_react/.env.*.local
+
+# Frontend logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
