@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { logout} from '../../auth/api/authApi.ts';
-import type { AuthenticatedUser } from '../../auth/api/authApi.ts';
+import type { AuthenticatedUser } from '../../auth/types.ts';
 
 interface DashboardPageProps {
     user: AuthenticatedUser;

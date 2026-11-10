@@ -3,7 +3,7 @@ import './LoginPage.css';
 
 import { getCsrfToken } from '../api/authApi.ts';
 import { login, getCurrentUser } from '../api/authApi.ts';
-import type { AuthenticatedUser } from '../api/authApi.ts';
+import type { AuthenticatedUser } from '../types.ts';
 
 interface LoginPageProps {
     onLogin: (user: AuthenticatedUser) => void;
@@ -13,7 +13,7 @@ export default function LoginPage({onLogin}: LoginPageProps) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
-    async function handleSubmit(event: React.SubmitEvent<HttpFormElement>) {
+    async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
 
         try {

@@ -1,3 +1,5 @@
+import type { AuthenticatedUser } from '../types.ts';
+
 const API_BASE = '/api/v1/auth';
 
 export interface CsrfToken {
